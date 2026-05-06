@@ -932,9 +932,173 @@ section { scroll-margin-top: 20px; }
 }
 
 .footer span { color: var(--accent); }
+
+/* ===== ENTRY GATE ===== */
+#entry-gate {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#entry-gate .gate-box {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  padding: 40px 36px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(79,255,176,0.07);
+}
+
+#entry-gate .gate-icon {
+  font-size: 2.5rem;
+  margin-bottom: 16px;
+}
+
+#entry-gate .gate-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+#entry-gate .gate-subtitle {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.05em;
+  margin-bottom: 28px;
+}
+
+#entry-gate input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 9px;
+  padding: 11px 16px;
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  outline: none;
+  text-align: center;
+  margin-bottom: 14px;
+  transition: border-color 0.2s;
+}
+
+#entry-gate input:focus {
+  border-color: var(--accent2);
+}
+
+#entry-gate .gate-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #0a0c10;
+  border: none;
+  border-radius: 9px;
+  padding: 11px;
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: opacity 0.15s;
+}
+
+#entry-gate .gate-btn:hover { opacity: 0.88; }
+
+#entry-gate .gate-error {
+  font-size: 12px;
+  color: var(--accent3);
+  font-family: 'Space Mono', monospace;
+  margin-top: 10px;
+  min-height: 18px;
+}
+
+/* ===== LEADER LOCK PANEL ===== */
+.leader-lock {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 18px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.leader-lock .ll-icon { font-size: 1.8rem; margin-bottom: 10px; }
+
+.leader-lock .ll-title {
+  font-size: 12px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.leader-lock input {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 8px 14px;
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  outline: none;
+  width: 220px;
+  text-align: center;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+
+.leader-lock input:focus { border-color: var(--accent4); }
+
+.leader-lock .ll-btn {
+  background: rgba(255,170,0,0.12);
+  border: 1px solid rgba(255,170,0,0.35);
+  color: var(--accent4);
+  border-radius: 7px;
+  padding: 8px 18px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.15s;
+}
+
+.leader-lock .ll-btn:hover { background: rgba(255,170,0,0.22); }
+
+.leader-lock .ll-error {
+  font-size: 11px;
+  color: var(--accent3);
+  font-family: 'Space Mono', monospace;
+  margin-top: 6px;
+  min-height: 16px;
+}
 </style>
 </head>
 <body>
+
+<!-- ENTRY GATE -->
+<div id="entry-gate">
+  <div class="gate-box">
+    <div class="gate-icon">🔐</div>
+    <div class="gate-title">AIOS-Lite Mission Control</div>
+    <div class="gate-subtitle">ENTER TEAM ACCESS CODE TO CONTINUE</div>
+    <input type="password" id="entry-pw" placeholder="••••" maxlength="32"
+           onkeydown="if(event.key==='Enter')checkEntryGate()">
+    <button class="gate-btn" onclick="checkEntryGate()">ENTER →</button>
+    <div class="gate-error" id="entry-error"></div>
+  </div>
+</div>
 
 <!-- TEAM CHECKLIST MODAL -->
 <div class="tcl-overlay" id="tcl-overlay" onclick="tclOverlayClick(event)">
@@ -1045,24 +1209,38 @@ section { scroll-margin-top: 20px; }
     </div>
 
     <!-- Name editor -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:28px;">
-      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:12px;">📝 Personalize Your Team Names</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;">
+    <div id="leader-panel">
+      <!-- Locked state (shown by default) -->
+      <div class="leader-lock" id="leader-lock">
+        <div class="ll-icon">🔒</div>
+        <div class="ll-title">📝 Personalize Team Names · Leader Access Required</div>
         <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Team Lead</div>
-          <input type="text" placeholder="Enter name…" oninput="setName(0,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+          <input type="password" id="leader-pw" placeholder="••••••" maxlength="32"
+                 onkeydown="if(event.key==='Enter')checkLeaderPw()">
+          <button class="ll-btn" onclick="checkLeaderPw()">Unlock</button>
         </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 1</div>
-          <input type="text" placeholder="Enter name…" oninput="setName(1,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 2</div>
-          <input type="text" placeholder="Enter name…" oninput="setName(2,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CS Intern</div>
-          <input type="text" placeholder="Enter name…" oninput="setName(3,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+        <div class="ll-error" id="leader-error"></div>
+      </div>
+      <!-- Unlocked state (hidden until authenticated) -->
+      <div id="leader-unlocked" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:28px;">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:12px;">📝 Personalize Your Team Names</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Team Lead</div>
+            <input type="text" placeholder="Enter name…" oninput="setName(0,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 1</div>
+            <input type="text" placeholder="Enter name…" oninput="setName(1,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 2</div>
+            <input type="text" placeholder="Enter name…" oninput="setName(2,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CS Intern</div>
+            <input type="text" placeholder="Enter name…" oninput="setName(3,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
+          </div>
         </div>
       </div>
     </div>
@@ -1407,9 +1585,60 @@ let checked = JSON.parse(localStorage.getItem('aios_checked') || '{}');
 const names = JSON.parse(localStorage.getItem('aios_names') || '["Team Lead","CSE Intern 1","CSE Intern 2","CS Intern"]');
 
 // ===========================
+// ENTRY GATE
+// ===========================
+function checkEntryGate() {
+  const pw = document.getElementById('entry-pw').value;
+  if (pw === 'AIOS') {
+    sessionStorage.setItem('aios_site_auth', '1');
+    document.getElementById('entry-gate').style.display = 'none';
+  } else {
+    const err = document.getElementById('entry-error');
+    err.textContent = '✕ Incorrect access code. Try again.';
+    document.getElementById('entry-pw').value = '';
+    document.getElementById('entry-pw').focus();
+    setTimeout(() => { err.textContent = ''; }, 3000);
+  }
+}
+
+// ===========================
+// LEADER PANEL
+// ===========================
+function checkLeaderPw() {
+  const pw = document.getElementById('leader-pw').value;
+  if (pw === 'A12528@as') {
+    sessionStorage.setItem('aios_leader_auth', '1');
+    unlockLeaderPanel();
+  } else {
+    const err = document.getElementById('leader-error');
+    err.textContent = '✕ Incorrect leader password.';
+    document.getElementById('leader-pw').value = '';
+    document.getElementById('leader-pw').focus();
+    setTimeout(() => { err.textContent = ''; }, 3000);
+  }
+}
+
+function unlockLeaderPanel() {
+  document.getElementById('leader-lock').style.display = 'none';
+  document.getElementById('leader-unlocked').style.display = 'block';
+}
+
+// ===========================
 // INIT
 // ===========================
 function init() {
+  // Check site-level access
+  if (sessionStorage.getItem('aios_site_auth') === '1') {
+    document.getElementById('entry-gate').style.display = 'none';
+  } else {
+    document.getElementById('entry-pw').focus();
+  }
+
+  // Restore leader panel if already authenticated this session
+  if (sessionStorage.getItem('aios_leader_auth') === '1') {
+    unlockLeaderPanel();
+  }
+
   // Restore names in inputs
   document.querySelectorAll('input[type=text]').forEach((inp, i) => {
     if (names[i] !== ['Team Lead','CSE Intern 1','CSE Intern 2','CS Intern'][i]) {
