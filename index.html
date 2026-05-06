@@ -23,6 +23,7 @@
   --text2: #8892aa;
   --text3: #4a5268;
   --cse: #00d4ff;
+  --ece: #00d4ff;
   --cs: #4fffb0;
   --glow: rgba(79,255,176,0.12);
   --glow2: rgba(0,212,255,0.10);
@@ -822,13 +823,13 @@ section { scroll-margin-top: 20px; }
 
 <!-- FLOATING NAV -->
 <nav class="float-nav">
-  <div class="fnav-dot active" data-label="Mission" onclick="scrollTo('hero')"></div>
-  <div class="fnav-dot" data-label="Progress" onclick="scrollTo('progress')"></div>
-  <div class="fnav-dot" data-label="Team" onclick="scrollTo('team')"></div>
-  <div class="fnav-dot" data-label="Daily Plan" onclick="scrollTo('daily')"></div>
-  <div class="fnav-dot" data-label="Architecture" onclick="scrollTo('arch')"></div>
-  <div class="fnav-dot" data-label="Deliverables" onclick="scrollTo('deliverables')"></div>
-  <div class="fnav-dot" data-label="Tech Stack" onclick="scrollTo('tech')"></div>
+  <div class="fnav-dot active" data-label="Mission" onclick="navScrollTo('hero')"></div>
+  <div class="fnav-dot" data-label="Progress" onclick="navScrollTo('progress')"></div>
+  <div class="fnav-dot" data-label="Team" onclick="navScrollTo('team')"></div>
+  <div class="fnav-dot" data-label="Daily Plan" onclick="navScrollTo('daily')"></div>
+  <div class="fnav-dot" data-label="Architecture" onclick="navScrollTo('arch')"></div>
+  <div class="fnav-dot" data-label="Deliverables" onclick="navScrollTo('deliverables')"></div>
+  <div class="fnav-dot" data-label="Tech Stack" onclick="navScrollTo('tech')"></div>
 </nav>
 
 <!-- HERO -->
@@ -886,14 +887,14 @@ section { scroll-margin-top: 20px; }
       </div>
       <div class="team-card cse" onclick="focusTeamMember(1)">
         <div class="team-avatar cse-av">🔧</div>
-        <div class="team-name" id="name-1">CSE Intern 1</div>
-        <div><span class="team-role-badge badge-cse">CSE · HARDWARE</span></div>
+        <div class="team-name" id="name-1">ECE Intern 1</div>
+        <div><span class="team-role-badge badge-cse">ECE · HARDWARE</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-1">0</span> done today</div>
       </div>
       <div class="team-card cse" onclick="focusTeamMember(2)">
         <div class="team-avatar cse-av">⚡</div>
-        <div class="team-name" id="name-2">CSE Intern 2</div>
-        <div><span class="team-role-badge badge-cse">CSE · HARDWARE</span></div>
+        <div class="team-name" id="name-2">ECE Intern 2</div>
+        <div><span class="team-role-badge badge-cse">ECE · HARDWARE</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-2">0</span> done today</div>
       </div>
       <div class="team-card cs" onclick="focusTeamMember(3)">
@@ -913,11 +914,11 @@ section { scroll-margin-top: 20px; }
           <input type="text" placeholder="Enter name…" oninput="setName(0,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 1</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">ECE Intern 1</div>
           <input type="text" placeholder="Enter name…" oninput="setName(1,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CSE Intern 2</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">ECE Intern 2</div>
           <input type="text" placeholder="Enter name…" oninput="setName(2,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
         </div>
         <div>
@@ -1063,7 +1064,7 @@ section { scroll-margin-top: 20px; }
 const DAYS = [
   {w:0,d:"Day 1",ti:"Project kickoff & team setup",
   si:"Before writing a single line of code, the whole team reads the project blueprint together, decides who handles hardware (CSE) and who handles software (CS), and creates a shared workspace. Like the first day of building a house — plan before you pick up a hammer.",
-  cse:["Understand what Hardware Abstraction Layer (HAL) means and why it matters","List target hardware: x86 laptop + Raspberry Pi 4 (ARM)","Install QEMU on each machine and verify it launches"],
+  ece:["Understand what Hardware Abstraction Layer (HAL) means and why it matters","List target hardware: x86 laptop + Raspberry Pi 4 (ARM)","Install QEMU on each machine and verify it launches"],
    cs:["Create a shared GitHub repository with /kernel, /ai-shell, /voice, /docs folders","Write a one-page project brief describing what AIOS-Lite will do","Draft the team charter: roles, meeting schedule, how decisions are made"],
    terms:[{t:"QEMU",d:"A free program that pretends to be a computer — lets you run your OS without real hardware"},{t:"HAL",d:"Hardware Abstraction Layer: a software layer so the OS can talk to any hardware without knowing its exact details"},{t:"x86",d:"Chip architecture in most laptops/desktops (Intel/AMD)"},{t:"ARM",d:"A different chip architecture in phones and Raspberry Pi — more power-efficient"},{t:"Git",d:"A tool that saves every version of your code so teammates never overwrite each other"}],
    res:[{n:"Git basics — official guide",u:"https://git-scm.com/book/en/v2"},{n:"QEMU download & quick start",u:"https://www.qemu.org/download/"},{n:"OS Three Easy Pieces — free textbook",u:"https://pages.cs.wisc.edu/~remzi/OSTEP/"}]},
@@ -1524,7 +1525,7 @@ function cycleDel(el) {
 // ===========================
 // SCROLL NAV
 // ===========================
-function scrollTo(id) {
+function navScrollTo(id) {
   document.getElementById(id).scrollIntoView({behavior:'smooth'});
 }
 
