@@ -1723,6 +1723,16 @@ const DAYS = [
    res:[{n:"GitHub Releases guide",u:"https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository"},{n:"Choose an open-source license",u:"https://choosealicense.com/"}]}
 ];
 
+// Add day-wise hardware checklist topics (used especially for Team Lead execution tracking).
+DAYS.forEach((day) => {
+  if (!Array.isArray(day.hw)) {
+    day.hw = [
+      `Review the hardware execution touchpoints for ${day.d}: ${day.ti}`,
+      `Validate this day's output on target hardware or emulation (x86/ARM/QEMU) and log observations`
+    ];
+  }
+});
+
 const WEEKS = [
   {label:"Week 1",theme:"Research & Discovery",icon:"🔍",desc:"Build the foundation: research landscape, set up environments, and align the team on goals before writing a single line of code."},
   {label:"Week 2",theme:"Minimal OS Base",icon:"🐧",desc:"Configure and compile a custom Linux kernel. Build a bootable Alpine Linux image. First boot in QEMU."},
@@ -1949,11 +1959,11 @@ function selectDay(wi, di) {
 function isDayDone(wi, di) {
   const d = (WEEK_DAY_GROUPS[wi] || [])[di];
   if (!d) return false;
-  const totalTasks = d.cse.length + d.cs.length;
-  const doneCount = [...d.cse, ...d.cs].filter((t, i) => {
-    const key = `${wi}-${di}-${i < d.cse.length ? 'cse' : 'cs'}-${i < d.cse.length ? i : i - d.cse.length}`;
-    return isTaskDone(key);
-  }).length;
+  const hw = d.hw || [];
+  const totalTasks = d.cse.length + d.cs.length + hw.length;
+  const doneCount = d.cse.filter((_, i) => isTaskDone(`${wi}-${di}-cse-${i}`)).length
+    + d.cs.filter((_, i) => isTaskDone(`${wi}-${di}-cs-${i}`)).length
+    + hw.filter((_, i) => isTaskDone(`${wi}-${di}-hw-${i}`)).length;
   return doneCount === totalTasks;
 }
 
@@ -2075,7 +2085,7 @@ function toggleTerm(idx, wi, di) {
 // PROGRESS
 // ===========================
 function updateProgress() {
-  const total = DAYS.reduce((sum, d) => sum + d.cse.length + d.cs.length, 0);
+  const total = DAYS.reduce((sum, d) => sum + d.cse.length + d.cs.length + (d.hw || []).length, 0);
   const done = Object.keys(taskStatus).filter(k => taskStatus[k] === 'done').length;
   const pct = Math.round((done / total) * 100);
   document.getElementById('prog-pct').textContent = pct + '%';
@@ -2087,13 +2097,12 @@ function buildWeekProgress() {
   const el = document.getElementById('week-progress-row');
   el.innerHTML = WEEKS.map((w, wi) => {
     const wdays = WEEK_DAY_GROUPS[wi] || [];
-    const total = wdays.reduce((s, d) => s + d.cse.length + d.cs.length, 0);
+    const total = wdays.reduce((s, d) => s + d.cse.length + d.cs.length + (d.hw || []).length, 0);
     let done = 0;
     wdays.forEach((d, di) => {
-      [...d.cse, ...d.cs].forEach((t, i) => {
-        const key = `${wi}-${di}-${i < d.cse.length ? 'cse' : 'cs'}-${i < d.cse.length ? i : i - d.cse.length}`;
-        if (isTaskDone(key)) done++;
-      });
+      d.cse.forEach((_, i) => { if (isTaskDone(`${wi}-${di}-cse-${i}`)) done++; });
+      d.cs.forEach((_, i) => { if (isTaskDone(`${wi}-${di}-cs-${i}`)) done++; });
+      (d.hw || []).forEach((_, i) => { if (isTaskDone(`${wi}-${di}-hw-${i}`)) done++; });
     });
     const pct = Math.round((done/total)*100);
     const cls = pct === 100 ? 'done' : pct > 0 ? 'current' : '';
@@ -2115,14 +2124,16 @@ function updateTeamCounts() {
   });
   const d = wdays[di >= 0 ? di : 0];
   if (!d) return;
-  let cseDone = 0, csDone = 0;
+  let cseDone = 0, csDone = 0, hwDone = 0;
   d.cse.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cse-${i}`)) cseDone++; });
   d.cs.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cs-${i}`)) csDone++; });
+  (d.hw || []).forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-hw-${i}`)) hwDone++; });
   const softwareDone = cseDone + csDone;
+  const leadDone = softwareDone + hwDone;
   document.getElementById('tasks-1').textContent = softwareDone;
   document.getElementById('tasks-2').textContent = softwareDone;
   document.getElementById('tasks-3').textContent = softwareDone;
-  document.getElementById('tasks-0').textContent = softwareDone;
+  document.getElementById('tasks-0').textContent = leadDone;
 
   const memberTotals = Array(names.length).fill(0);
   const memberDone = Array(names.length).fill(0);
@@ -2131,13 +2142,42 @@ function updateTeamCounts() {
     const diAll = wdays.indexOf(day);
     day.cse.forEach((t, i) => {
       const key = `${day.w}-${diAll}-cse-${i}`;
-      memberTotals.forEach((_, memberIdx) => memberTotals[memberIdx]++);
-      if (isTaskDone(key)) memberDone.forEach((_, memberIdx) => memberDone[memberIdx]++);
+      memberTotals.forEach((_, memberIdx) => {
+        const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+        if (role === 'all' || role === 'software' || role === 'cse') memberTotals[memberIdx]++;
+      });
+      if (isTaskDone(key)) {
+        memberDone.forEach((_, memberIdx) => {
+          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+          if (role === 'all' || role === 'software' || role === 'cse') memberDone[memberIdx]++;
+        });
+      }
     });
     day.cs.forEach((t, i) => {
       const key = `${day.w}-${diAll}-cs-${i}`;
-      memberTotals.forEach((_, memberIdx) => memberTotals[memberIdx]++);
-      if (isTaskDone(key)) memberDone.forEach((_, memberIdx) => memberDone[memberIdx]++);
+      memberTotals.forEach((_, memberIdx) => {
+        const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+        if (role === 'all' || role === 'software' || role === 'cs') memberTotals[memberIdx]++;
+      });
+      if (isTaskDone(key)) {
+        memberDone.forEach((_, memberIdx) => {
+          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+          if (role === 'all' || role === 'software' || role === 'cs') memberDone[memberIdx]++;
+        });
+      }
+    });
+    (day.hw || []).forEach((t, i) => {
+      const key = `${day.w}-${diAll}-hw-${i}`;
+      memberTotals.forEach((_, memberIdx) => {
+        const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+        if (role === 'all' || role === 'hardware') memberTotals[memberIdx]++;
+      });
+      if (isTaskDone(key)) {
+        memberDone.forEach((_, memberIdx) => {
+          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
+          if (role === 'all' || role === 'hardware') memberDone[memberIdx]++;
+        });
+      }
     });
   });
   names.forEach((_, idx) => {
@@ -2221,6 +2261,9 @@ function focusTeamMember(idx) {
       if (role === 'all' || role === 'software' || role === 'cs') {
         roleTasks += d.cs.map((t, i) => makeModalItem(t, `${wi}-${di}-cs-${i}`, idx)).join('');
       }
+      if (role === 'all' || role === 'hardware') {
+        roleTasks += (d.hw || []).map((t, i) => makeModalItem(t, `${wi}-${di}-hw-${i}`, idx)).join('');
+      }
       if (!roleTasks) return '';
       return `<div class="tcl-day-label">📅 ${d.d} — ${d.ti}</div>${roleTasks}`;
     }).join('');
@@ -2233,7 +2276,7 @@ function focusTeamMember(idx) {
 
   const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const pendingOrTodo = getMemberAlertItems(idx).length;
-  const roleLabelMap = { all: 'All Tasks', software: 'Software Tasks', cse: 'Software Track A', cs: 'Software Track B' };
+  const roleLabelMap = { all: 'All Tasks (Software + Hardware)', software: 'Software Tasks', hardware: 'Hardware Tasks', cse: 'Software Track A', cs: 'Software Track B' };
   const roleLabel = roleLabelMap[role] || role;
 
   document.getElementById('tcl-title').textContent = `📋 ${memberName}'s Checklist`;
@@ -2283,6 +2326,13 @@ function getMemberAlertItems(memberIdx) {
     if (role === 'all' || role === 'software' || role === 'cs') {
       d.cs.forEach((t, i) => {
         const key = `${wi}-${di}-cs-${i}`;
+        const status = getTaskStatus(key);
+        if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
+      });
+    }
+    if (role === 'all' || role === 'hardware') {
+      (d.hw || []).forEach((t, i) => {
+        const key = `${wi}-${di}-hw-${i}`;
         const status = getTaskStatus(key);
         if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
       });
