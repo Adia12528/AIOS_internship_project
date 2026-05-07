@@ -453,11 +453,48 @@ body::before {
   color: var(--text3);
 }
 
+.task-item.pending .task-check {
+  background: rgba(255,170,0,0.16);
+  border-color: var(--accent4);
+  color: var(--accent4);
+}
+
+.task-item.pending .task-text {
+  color: var(--accent4);
+}
+
 .task-text {
   font-size: 13px;
   color: var(--text2);
   line-height: 1.5;
   transition: color 0.15s;
+  flex: 1;
+}
+
+.task-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.task-act-btn {
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text3);
+  border-radius: 6px;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.task-act-btn.active.done {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.task-act-btn.active.pending {
+  border-color: var(--accent4);
+  color: var(--accent4);
 }
 
 /* ===== TERMS ===== */
@@ -906,6 +943,14 @@ section { scroll-margin-top: 20px; }
 }
 .tcl-task.checked .tcl-checkbox { background: rgba(79,255,176,0.15); border-color: var(--accent); }
 .tcl-task-text { font-size: 13px; line-height: 1.5; }
+.tcl-task.pending .tcl-checkbox { background: rgba(255,170,0,0.16); border-color: var(--accent4); color: var(--accent4); }
+.tcl-task.pending .tcl-task-text { color: var(--accent4); }
+
+.tcl-task-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
 
 .tcl-footer { margin-top: 22px; text-align: center; }
 .tcl-goto-btn {
@@ -1083,6 +1128,83 @@ section { scroll-margin-top: 20px; }
   margin-top: 6px;
   min-height: 16px;
 }
+
+.notify-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  border-radius: 7px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.notify-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 10px;
+  background: var(--accent3);
+  color: #fff;
+  font-size: 9px;
+  font-family: 'Space Mono', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+.notify-count.zero { display: none; }
+
+.team-member-progress {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+.alert-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  z-index: 210;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+
+.alert-overlay.open { display: flex; }
+
+.alert-panel {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 620px;
+  padding: 24px;
+  margin: auto;
+  position: relative;
+}
+
+.alert-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--bg2);
+}
+
+.alert-item.pending { border-color: rgba(255,170,0,0.35); }
+.alert-item.todo { border-color: rgba(255,107,107,0.3); }
+.alert-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.alert-meta { font-size: 11px; color: var(--text3); }
 </style>
 </head>
 <body>
@@ -1120,6 +1242,18 @@ section { scroll-margin-top: 20px; }
   </div>
 </div>
 
+<!-- MEMBER ALERT MODAL -->
+<div class="alert-overlay" id="alert-overlay" onclick="alertOverlayClick(event)">
+  <div class="alert-panel">
+    <button class="tcl-close" onclick="closeMemberAlerts()">✕</button>
+    <div class="tcl-header">
+      <div class="tcl-title" id="alert-title">Task Alerts</div>
+      <div class="tcl-sub" id="alert-sub"></div>
+    </div>
+    <div id="alert-body"></div>
+  </div>
+</div>
+
 <!-- FLOATING NAV -->
 <nav class="float-nav">
   <div class="fnav-dot active" data-label="Mission" onclick="navScrollTo('hero')"></div>
@@ -1147,7 +1281,7 @@ section { scroll-margin-top: 20px; }
 
 <!-- STATS -->
 <div class="stats-row">
-  <div class="stat-card"><div class="stat-num">30</div><div class="stat-label">Total Days</div></div>
+  <div class="stat-card"><div class="stat-num" id="days-left-stat">30</div><div class="stat-label">Total Days Left</div></div>
   <div class="stat-card"><div class="stat-num">6</div><div class="stat-label">Build Layers</div></div>
   <div class="stat-card"><div class="stat-num">15+</div><div class="stat-label">Voice Commands</div></div>
   <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">Architectures</div></div>
@@ -1183,28 +1317,44 @@ section { scroll-margin-top: 20px; }
         <div class="team-name" id="name-0">Team Lead</div>
         <div><span class="team-role-badge badge-lead">PROJECT LEAD</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-0">0</span> done today</div>
-        <div style="margin-top:10px;"><button onclick="event.stopPropagation();focusTeamMember(0)" style="background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.25);color:var(--accent4);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;width:100%;">📋 View Checklist</button></div>
+        <div class="team-member-progress">Progress: <span id="progress-0">0%</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="event.stopPropagation();focusTeamMember(0)" style="background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.25);color:var(--accent4);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;flex:1;">📋 View Checklist</button>
+          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(0)">🔔<span class="notify-count zero" id="notify-0">0</span></button>
+        </div>
       </div>
       <div class="team-card cse" onclick="focusTeamMember(1)">
         <div class="team-avatar cse-av">🔧</div>
         <div class="team-name" id="name-1">CSE Intern 1</div>
         <div><span class="team-role-badge badge-cse">CSE · HARDWARE</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-1">0</span> done today</div>
-        <div style="margin-top:10px;"><button onclick="event.stopPropagation();focusTeamMember(1)" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:var(--cse);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;width:100%;">📋 View Checklist</button></div>
+        <div class="team-member-progress">Progress: <span id="progress-1">0%</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="event.stopPropagation();focusTeamMember(1)" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:var(--cse);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;flex:1;">📋 View Checklist</button>
+          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(1)">🔔<span class="notify-count zero" id="notify-1">0</span></button>
+        </div>
       </div>
       <div class="team-card cse" onclick="focusTeamMember(2)">
         <div class="team-avatar cse-av">⚡</div>
         <div class="team-name" id="name-2">CSE Intern 2</div>
         <div><span class="team-role-badge badge-cse">CSE · HARDWARE</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-2">0</span> done today</div>
-        <div style="margin-top:10px;"><button onclick="event.stopPropagation();focusTeamMember(2)" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:var(--cse);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;width:100%;">📋 View Checklist</button></div>
+        <div class="team-member-progress">Progress: <span id="progress-2">0%</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="event.stopPropagation();focusTeamMember(2)" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);color:var(--cse);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;flex:1;">📋 View Checklist</button>
+          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(2)">🔔<span class="notify-count zero" id="notify-2">0</span></button>
+        </div>
       </div>
       <div class="team-card cs" onclick="focusTeamMember(3)">
         <div class="team-avatar cs-av">💻</div>
         <div class="team-name" id="name-3">CS Intern</div>
         <div><span class="team-role-badge badge-cs">CS · SOFTWARE</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-3">0</span> done today</div>
-        <div style="margin-top:10px;"><button onclick="event.stopPropagation();focusTeamMember(3)" style="background:rgba(79,255,176,0.1);border:1px solid rgba(79,255,176,0.25);color:var(--cs);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;width:100%;">📋 View Checklist</button></div>
+        <div class="team-member-progress">Progress: <span id="progress-3">0%</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="event.stopPropagation();focusTeamMember(3)" style="background:rgba(79,255,176,0.1);border:1px solid rgba(79,255,176,0.25);color:var(--cs);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;flex:1;">📋 View Checklist</button>
+          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(3)">🔔<span class="notify-count zero" id="notify-3">0</span></button>
+        </div>
       </div>
     </div>
 
@@ -1241,6 +1391,10 @@ section { scroll-margin-top: 20px; }
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CS Intern</div>
             <input type="text" placeholder="Enter name…" oninput="setName(3,this.value)" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;">
           </div>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="ll-btn" style="margin-left:0;" onclick="startProgressTracking()">▶ Start Progress Tracker</button>
+          <div id="progress-start-info" style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;"></div>
         </div>
       </div>
     </div>
@@ -1582,7 +1736,57 @@ let currentWeek = 0;
 let currentDay = 0;
 let activeTerm = null;
 let checked = JSON.parse(localStorage.getItem('aios_checked') || '{}');
+let taskStatus = JSON.parse(localStorage.getItem('aios_task_status') || '{}');
 const names = JSON.parse(localStorage.getItem('aios_names') || '["Team Lead","CSE Intern 1","CSE Intern 2","CS Intern"]');
+const TOTAL_DAYS = 30;
+let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
+
+Object.keys(checked).forEach((key) => {
+  if (checked[key] && !taskStatus[key]) taskStatus[key] = 'done';
+});
+localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
+
+function getTaskStatus(key) {
+  return taskStatus[key] || (checked[key] ? 'done' : 'todo');
+}
+
+function isTaskDone(key) {
+  return getTaskStatus(key) === 'done';
+}
+
+function setTaskStatus(key, status) {
+  if (status === 'todo') delete taskStatus[key];
+  else taskStatus[key] = status;
+  checked[key] = status === 'done';
+  localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
+  localStorage.setItem('aios_checked', JSON.stringify(checked));
+  if (!progressStartDate && status !== 'todo') {
+    progressStartDate = new Date().toISOString();
+    localStorage.setItem('aios_progress_start_date', progressStartDate);
+  }
+}
+
+function getDaysLeft() {
+  if (!progressStartDate) return TOTAL_DAYS;
+  const elapsed = Math.floor((Date.now() - new Date(progressStartDate).getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, TOTAL_DAYS - elapsed);
+}
+
+function updateDaysLeftStat() {
+  const daysLeft = getDaysLeft();
+  const el = document.getElementById('days-left-stat');
+  if (el) el.textContent = daysLeft;
+  const info = document.getElementById('progress-start-info');
+  if (info) info.textContent = progressStartDate ? `Started: ${new Date(progressStartDate).toLocaleDateString()}` : 'Tracker not started yet.';
+}
+
+function startProgressTracking() {
+  if (!progressStartDate) {
+    progressStartDate = new Date().toISOString();
+    localStorage.setItem('aios_progress_start_date', progressStartDate);
+  }
+  updateDaysLeftStat();
+}
 
 // ===========================
 // ENTRY GATE
@@ -1621,6 +1825,7 @@ function checkLeaderPw() {
 function unlockLeaderPanel() {
   document.getElementById('leader-lock').style.display = 'none';
   document.getElementById('leader-unlocked').style.display = 'block';
+  updateDaysLeftStat();
 }
 
 // ===========================
@@ -1651,6 +1856,8 @@ function init() {
   renderDay(0, 0);
   buildWeekProgress();
   updateProgress();
+  updateDaysLeftStat();
+  updateMemberNotifications();
 }
 
 function setName(idx, val) {
@@ -1705,6 +1912,7 @@ function buildDayTabs(wi) {
 function selectDay(wi, di) {
   activeTerm = null;
   currentWeek = wi;
+  currentDay = di;
   document.querySelectorAll('.dtab').forEach((b, i) => b.classList.toggle('active', i===di));
   renderDay(wi, di);
 }
@@ -1715,7 +1923,7 @@ function isDayDone(wi, di) {
   const totalTasks = d.cse.length + d.cs.length;
   const doneCount = [...d.cse, ...d.cs].filter((t, i) => {
     const key = `${wi}-${di}-${i < d.cse.length ? 'cse' : 'cs'}-${i < d.cse.length ? i : i - d.cse.length}`;
-    return checked[key];
+    return isTaskDone(key);
   }).length;
   return doneCount === totalTasks;
 }
@@ -1726,15 +1934,22 @@ function isDayDone(wi, di) {
 function renderDay(wi, globalIdx) {
   const wdays = DAYS.filter(d => d.w === wi);
   const di = typeof globalIdx === 'number' && globalIdx < wdays.length ? globalIdx : 0;
+  currentDay = di;
   const d = wdays[di];
   if (!d) return;
 
   const makeTask = (text, role, idx) => {
     const key = `${wi}-${di}-${role}-${idx}`;
-    const done = !!checked[key];
-    return `<div class="task-item${done?' checked':''}" onclick="toggleTask('${key}','${wi}','${di}')">
-      <div class="task-check">${done?'✓':''}</div>
+    const status = getTaskStatus(key);
+    const done = status === 'done';
+    const pending = status === 'pending';
+    return `<div class="task-item${done?' checked':''}${pending?' pending':''}" onclick="toggleTaskDone('${key}','${wi}','${di}')">
+      <div class="task-check">${done?'✓':pending?'⏳':''}</div>
       <div class="task-text">${text}</div>
+      <div class="task-actions">
+        <button class="task-act-btn done${done?' active':''}" onclick="event.stopPropagation();setTaskState('${key}','done','${wi}','${di}')">Done</button>
+        <button class="task-act-btn pending${pending?' active':''}" onclick="event.stopPropagation();setTaskState('${key}','pending','${wi}','${di}')">Pending</button>
+      </div>
     </div>`;
   };
 
@@ -1785,19 +2000,25 @@ function renderDay(wi, globalIdx) {
 // ===========================
 // TASKS
 // ===========================
-function toggleTask(key, wi, di) {
-  checked[key] = !checked[key];
-  localStorage.setItem('aios_checked', JSON.stringify(checked));
-  const item = event.currentTarget;
-  item.classList.toggle('checked', checked[key]);
-  item.querySelector('.task-check').textContent = checked[key] ? '✓' : '';
+function setTaskState(key, state, wi, di) {
+  const nextState = getTaskStatus(key) === state ? 'todo' : state;
+  setTaskStatus(key, nextState);
+  renderDay(parseInt(wi), parseInt(di));
+  refreshTaskAggregates(parseInt(wi), parseInt(di));
+}
+
+function toggleTaskDone(key, wi, di) {
+  setTaskState(key, 'done', wi, di);
+}
+
+function refreshTaskAggregates(wi, di) {
   updateProgress();
   updateTeamCounts();
+  updateMemberNotifications();
+  updateDaysLeftStat();
   // Update day tab done status
-  const wdays = DAYS.filter(d => d.w == wi);
-  const diNum = parseInt(di);
-  const allDone = isDayDone(parseInt(wi), diNum);
-  const tab = document.getElementById(`dtab-${wi}-${diNum}`);
+  const allDone = isDayDone(wi, di);
+  const tab = document.getElementById(`dtab-${wi}-${di}`);
   if (tab) tab.classList.toggle('done', allDone);
   buildWeekProgress();
 }
@@ -1826,7 +2047,7 @@ function toggleTerm(idx, wi, di) {
 // ===========================
 function updateProgress() {
   const total = DAYS.reduce((sum, d) => sum + d.cse.length + d.cs.length, 0);
-  const done = Object.values(checked).filter(Boolean).length;
+  const done = Object.keys(taskStatus).filter(k => taskStatus[k] === 'done').length;
   const pct = Math.round((done / total) * 100);
   document.getElementById('prog-pct').textContent = pct + '%';
   document.getElementById('prog-bar').style.width = pct + '%';
@@ -1842,7 +2063,7 @@ function buildWeekProgress() {
     wdays.forEach((d, di) => {
       [...d.cse, ...d.cs].forEach((t, i) => {
         const key = `${wi}-${di}-${i < d.cse.length ? 'cse' : 'cs'}-${i < d.cse.length ? i : i - d.cse.length}`;
-        if (checked[key]) done++;
+        if (isTaskDone(key)) done++;
       });
     });
     const pct = Math.round((done/total)*100);
@@ -1866,12 +2087,34 @@ function updateTeamCounts() {
   const d = wdays[di >= 0 ? di : 0];
   if (!d) return;
   let cseDone = 0, csDone = 0;
-  d.cse.forEach((t, i) => { if (checked[`${wi}-${di >= 0 ? di : 0}-cse-${i}`]) cseDone++; });
-  d.cs.forEach((t, i) => { if (checked[`${wi}-${di >= 0 ? di : 0}-cs-${i}`]) csDone++; });
+  d.cse.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cse-${i}`)) cseDone++; });
+  d.cs.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cs-${i}`)) csDone++; });
   document.getElementById('tasks-1').textContent = cseDone;
   document.getElementById('tasks-2').textContent = cseDone;
   document.getElementById('tasks-3').textContent = csDone;
   document.getElementById('tasks-0').textContent = cseDone + csDone;
+
+  const memberTotals = [0, 0, 0, 0];
+  const memberDone = [0, 0, 0, 0];
+  DAYS.forEach((day) => {
+    const wdays = DAYS.filter(x => x.w === day.w);
+    const diAll = wdays.indexOf(day);
+    day.cse.forEach((t, i) => {
+      const key = `${day.w}-${diAll}-cse-${i}`;
+      memberTotals[0]++; memberTotals[1]++; memberTotals[2]++;
+      if (isTaskDone(key)) { memberDone[0]++; memberDone[1]++; memberDone[2]++; }
+    });
+    day.cs.forEach((t, i) => {
+      const key = `${day.w}-${diAll}-cs-${i}`;
+      memberTotals[0]++; memberTotals[3]++;
+      if (isTaskDone(key)) { memberDone[0]++; memberDone[3]++; }
+    });
+  });
+  [0,1,2,3].forEach((idx) => {
+    const pct = memberTotals[idx] ? Math.round((memberDone[idx] / memberTotals[idx]) * 100) : 0;
+    const progressEl = document.getElementById(`progress-${idx}`);
+    if (progressEl) progressEl.textContent = `${pct}%`;
+  });
 }
 
 // ===========================
@@ -1925,12 +2168,18 @@ function focusTeamMember(idx) {
   let totalTasks = 0, doneTasks = 0;
 
   function makeModalItem(text, key, memberIdx) {
-    const done = !!checked[key];
+    const status = getTaskStatus(key);
+    const done = status === 'done';
+    const pending = status === 'pending';
     totalTasks++;
     if (done) doneTasks++;
-    return `<div class="tcl-task${done?' checked':''}" onclick="toggleModalTask('${key}',${memberIdx})" data-key="${key}">
-      <div class="tcl-checkbox">${done?'✓':''}</div>
+    return `<div class="tcl-task${done?' checked':''}${pending?' pending':''}" onclick="toggleModalTaskDone('${key}',${memberIdx})" data-key="${key}">
+      <div class="tcl-checkbox">${done?'✓':pending?'⏳':''}</div>
       <div class="tcl-task-text">${text}</div>
+      <div class="tcl-task-actions">
+        <button class="task-act-btn done${done?' active':''}" onclick="event.stopPropagation();setModalTaskState('${key}',${memberIdx},'done')">Done</button>
+        <button class="task-act-btn pending${pending?' active':''}" onclick="event.stopPropagation();setModalTaskState('${key}',${memberIdx},'pending')">Pending</button>
+      </div>
     </div>`;
   }
 
@@ -1955,11 +2204,12 @@ function focusTeamMember(idx) {
   }).join('');
 
   const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  const pendingOrTodo = getMemberAlertItems(idx).length;
   const roleLabelMap = { all: 'All Tasks', cse: 'CSE · Hardware Tasks', cs: 'CS · Software Tasks' };
   const roleLabel = roleLabelMap[role] || role;
 
   document.getElementById('tcl-title').textContent = `📋 ${memberName}'s Checklist`;
-  document.getElementById('tcl-sub').textContent = `${roleLabel} · ${doneTasks}/${totalTasks} completed (${pct}%)`;
+  document.getElementById('tcl-sub').textContent = `${roleLabel} · ${doneTasks}/${totalTasks} completed (${pct}%) · ${pendingOrTodo} pending/incomplete`;
   document.getElementById('tcl-progress-fill').style.width = pct + '%';
   document.getElementById('tcl-body').innerHTML = weekGroups;
   document.getElementById('tcl-overlay').classList.add('open');
@@ -1975,49 +2225,83 @@ function tclOverlayClick(e) {
   if (e.target === document.getElementById('tcl-overlay')) closeTeamChecklist();
 }
 
-function toggleModalTask(key, memberIdx) {
-  checked[key] = !checked[key];
-  localStorage.setItem('aios_checked', JSON.stringify(checked));
-  updateProgress();
-  updateTeamCounts();
+function setModalTaskState(key, memberIdx, state) {
+  const nextState = getTaskStatus(key) === state ? 'todo' : state;
+  setTaskStatus(key, nextState);
+  const parts = key.split('-');
+  refreshTaskAggregates(parseInt(parts[0]), parseInt(parts[1]));
+  renderDay(currentWeek, currentDay);
+  focusTeamMember(memberIdx);
+}
 
-  // Update the clicked task element in-place (preserves scroll position)
-  const taskEl = document.querySelector(`[data-key="${key}"]`);
-  if (taskEl) {
-    const done = checked[key];
-    taskEl.classList.toggle('checked', done);
-    taskEl.querySelector('.tcl-checkbox').textContent = done ? '✓' : '';
-  }
+function toggleModalTaskDone(key, memberIdx) {
+  setModalTaskState(key, memberIdx, 'done');
+}
 
-  // Recount totals for this member and refresh the subtitle + progress bar
+function getMemberAlertItems(memberIdx) {
   const roleMap = ['all', 'cse', 'cse', 'cs'];
-  const role = roleMap[memberIdx];
-  let total = 0, done = 0;
-  DAYS.forEach((d, globalDi) => {
+  const role = roleMap[memberIdx] || 'all';
+  const items = [];
+  DAYS.forEach((d) => {
     const wi = d.w;
     const wdays = DAYS.filter(x => x.w === wi);
     const di = wdays.indexOf(d);
     if (role === 'all' || role === 'cse') {
-      d.cse.forEach((t, i) => { total++; if (checked[`${wi}-${di}-cse-${i}`]) done++; });
+      d.cse.forEach((t, i) => {
+        const key = `${wi}-${di}-cse-${i}`;
+        const status = getTaskStatus(key);
+        if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
+      });
     }
     if (role === 'all' || role === 'cs') {
-      d.cs.forEach((t, i) => { total++; if (checked[`${wi}-${di}-cs-${i}`]) done++; });
+      d.cs.forEach((t, i) => {
+        const key = `${wi}-${di}-cs-${i}`;
+        const status = getTaskStatus(key);
+        if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
+      });
     }
   });
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  const roleLabelMap = { all: 'All Tasks', cse: 'CSE · Hardware Tasks', cs: 'CS · Software Tasks' };
-  const roleLabel = roleLabelMap[role] || role;
-  const memberName = names[memberIdx] || ['Team Lead','CSE Intern 1','CSE Intern 2','CS Intern'][memberIdx];
-  document.getElementById('tcl-sub').textContent = `${roleLabel} · ${done}/${total} completed (${pct}%)`;
-  document.getElementById('tcl-progress-fill').style.width = pct + '%';
+  return items;
+}
 
-  // Sync day-tab done indicator
-  const parts = key.split('-');
-  const wi = parseInt(parts[0]), di = parseInt(parts[1]);
-  const allDone = isDayDone(wi, di);
-  const tab = document.getElementById(`dtab-${wi}-${di}`);
-  if (tab) tab.classList.toggle('done', allDone);
-  buildWeekProgress();
+function updateMemberNotifications() {
+  [0,1,2,3].forEach((idx) => {
+    const count = getMemberAlertItems(idx).length;
+    const badge = document.getElementById(`notify-${idx}`);
+    if (badge) {
+      badge.textContent = count;
+      badge.classList.toggle('zero', count === 0);
+    }
+  });
+}
+
+function openMemberAlerts(memberIdx) {
+  const memberName = names[memberIdx] || ['Team Lead','CSE Intern 1','CSE Intern 2','CS Intern'][memberIdx];
+  const items = getMemberAlertItems(memberIdx);
+  document.getElementById('alert-title').textContent = `🔔 ${memberName} — Pending / Incomplete Tasks`;
+  document.getElementById('alert-sub').textContent = `${items.length} task(s) need attention`;
+  const body = document.getElementById('alert-body');
+  if (!items.length) {
+    body.innerHTML = `<div class="alert-item"><div class="alert-title">All clear ✅</div><div class="alert-meta">No pending or incomplete tasks.</div></div>`;
+  } else {
+    body.innerHTML = items.map((item) => `
+      <div class="alert-item ${item.status}">
+        <div class="alert-title">${item.status === 'pending' ? '⏳ Pending' : '⚠ Incomplete'} · ${item.text}</div>
+        <div class="alert-meta">Due: ${item.weekLabel} · ${item.day} (${item.title})</div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('alert-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMemberAlerts() {
+  document.getElementById('alert-overlay').classList.remove('open');
+  if (!document.getElementById('tcl-overlay').classList.contains('open')) document.body.style.overflow = '';
+}
+
+function alertOverlayClick(e) {
+  if (e.target === document.getElementById('alert-overlay')) closeMemberAlerts();
 }
 
 // ===========================
