@@ -1588,7 +1588,7 @@ section { scroll-margin-top: 20px; }
   <section id="roadmap" class="roadmap-section">
     <div class="section-head"><div class="section-title">Day 1 → Day 30 Roadmap</div><div class="section-line"></div></div>
     <div class="roadmap-intro">
-      <p>This roadmap shows the complete workflow from kickoff to final presentation. The target is a cross-architecture AIOS that can run on different hardware profiles, continuously improve with usage data, and coordinate one hardware-first leader with three software teammates.</p>
+      <p>This roadmap shows the complete workflow from kickoff to final presentation. The target is a cross-architecture AIOS that can run on different hardware profiles, continuously improve with usage data, and coordinate one hardware-first leader with software teammates.</p>
     </div>
     <div class="roadmap-list" id="roadmap-list"></div>
   </section>
@@ -2462,7 +2462,7 @@ function getRoadmapWeekIndex(weekValue) {
   if (!LEADER_WEEK_FOCUS.length) return -1;
   if (!Number.isInteger(weekValue)) {
     console.warn('Invalid roadmap week index:', weekValue);
-    return 0;
+    return -1;
   }
   return Math.max(0, Math.min(weekValue, LEADER_WEEK_FOCUS.length - 1));
 }
@@ -2472,8 +2472,8 @@ function renderRoadmap() {
   if (!el) return;
   el.innerHTML = DAYS.map((d) => {
     const weekIndex = getRoadmapWeekIndex(d.w);
-    const week = WEEKS[weekIndex >= 0 ? weekIndex : 0];
-    if (!week) console.warn('Roadmap week metadata missing for index:', weekIndex);
+    const week = weekIndex >= 0 ? WEEKS[weekIndex] : null;
+    if (weekIndex >= 0 && !week) console.warn('Roadmap week metadata missing for index:', weekIndex);
     const weekLabel = week ? week.label : 'Week TBD';
     const weekTheme = week ? week.theme : 'Roadmap phase pending';
     const leaderFocus = weekIndex >= 0 ? LEADER_WEEK_FOCUS[weekIndex] : 'Leader focus to be defined';
