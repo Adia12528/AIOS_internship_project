@@ -1809,6 +1809,14 @@ const WEEKS = [
   {label:"Week 5",theme:"Cross-Platform Testing",icon:"🔬",desc:"ARM cross-compilation, flash on Raspberry Pi 4, comprehensive benchmarking, and security hardening."},
   {label:"Week 6",theme:"Demo & Documentation",icon:"🎓",desc:"Final bug fixes, research paper, presentation deck, 5-minute demo video, GitHub v1.0 release, and final presentation."}
 ];
+const LEADER_WEEK_FOCUS = [
+  'Hardware baseline + software interface alignment',
+  'Boot path validation and bring-up checkpoints',
+  'Integration checkpoints between hardware and AI shell',
+  'Voice I/O reliability checks across targets',
+  'Cross-platform benchmark and stability ownership',
+  'Release readiness, demo hardware flow, and handoff'
+];
 
 // ===========================
 // STATE
@@ -2450,24 +2458,21 @@ function alertOverlayClick(e) {
   if (e.target === document.getElementById('alert-overlay')) closeMemberAlerts();
 }
 
+function getRoadmapWeekIndex(weekValue) {
+  const numericWeek = Number.isInteger(weekValue) ? weekValue : 0;
+  return Math.max(0, Math.min(numericWeek, LEADER_WEEK_FOCUS.length - 1));
+}
+
 function renderRoadmap() {
   const el = document.getElementById('roadmap-list');
   if (!el) return;
-  const leaderWeekFocus = [
-    'Hardware baseline + software interface alignment',
-    'Boot path validation and bring-up checkpoints',
-    'Integration checkpoints between hardware and AI shell',
-    'Voice I/O reliability checks across targets',
-    'Cross-platform benchmark and stability ownership',
-    'Release readiness, demo hardware flow, and handoff'
-  ];
   el.innerHTML = DAYS.map((d, idx) => `
     <div class="roadmap-item">
       <div class="roadmap-day">${d.d}</div>
       <div class="roadmap-title">${d.ti}</div>
       <div class="roadmap-meta">
         Phase: ${WEEKS[d.w].label} · ${WEEKS[d.w].theme}<br>
-        <span>Leader focus:</span> ${leaderWeekFocus[Math.max(0, Math.min(Number.isInteger(d.w) ? d.w : 0, leaderWeekFocus.length - 1))]}
+        <span>Leader focus:</span> ${LEADER_WEEK_FOCUS[getRoadmapWeekIndex(d.w)]}
       </div>
     </div>
   `).join('');
