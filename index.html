@@ -2467,7 +2467,7 @@ function renderRoadmap() {
       <div class="roadmap-title">${d.ti}</div>
       <div class="roadmap-meta">
         Phase: ${WEEKS[d.w].label} · ${WEEKS[d.w].theme}<br>
-        <span>Leader focus:</span> ${leaderWeekFocus[d.w] || leaderWeekFocus[0]}
+        <span>Leader focus:</span> ${leaderWeekFocus[Math.max(0, Math.min(Number.isInteger(d.w) ? d.w : 0, leaderWeekFocus.length - 1))]}
       </div>
     </div>
   `).join('');
