@@ -2472,14 +2472,17 @@ function renderRoadmap() {
   if (!el) return;
   el.innerHTML = DAYS.map((d) => {
     const weekIndex = getRoadmapWeekIndex(d.w);
-    const week = WEEKS[weekIndex >= 0 ? weekIndex : 0] || { label: 'Week TBD', theme: 'Roadmap phase pending' };
+    const week = WEEKS[weekIndex >= 0 ? weekIndex : 0];
+    if (!week) console.warn('Roadmap week metadata missing for index:', weekIndex);
+    const weekLabel = week ? week.label : 'Week TBD';
+    const weekTheme = week ? week.theme : 'Roadmap phase pending';
     const leaderFocus = weekIndex >= 0 ? LEADER_WEEK_FOCUS[weekIndex] : 'Leader focus to be defined';
     return `
     <div class="roadmap-item">
       <div class="roadmap-day">${d.d}</div>
       <div class="roadmap-title">${d.ti}</div>
       <div class="roadmap-meta">
-        Phase: ${week.label} · ${week.theme}<br>
+        Phase: ${weekLabel} · ${weekTheme}<br>
         <span>Leader focus:</span> ${leaderFocus}
       </div>
     </div>
