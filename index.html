@@ -842,6 +842,64 @@ body::before {
 .milestone-text h3 { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
 .milestone-text p { font-size: 12px; color: var(--text2); line-height: 1.5; }
 
+/* ===== ROADMAP ===== */
+.roadmap-section {
+  margin-bottom: 32px;
+}
+
+.roadmap-intro {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+
+.roadmap-intro p {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+.roadmap-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.roadmap-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.roadmap-day {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+
+.roadmap-title {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.roadmap-meta {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.5;
+}
+
+.roadmap-meta span {
+  color: var(--accent4);
+  font-weight: 700;
+}
+
 /* ===== SCROLL SECTIONS ===== */
 section { scroll-margin-top: 20px; }
 
@@ -1266,13 +1324,14 @@ section { scroll-margin-top: 20px; }
   <div class="fnav-dot" data-label="Architecture" onclick="navScrollTo('arch')"></div>
   <div class="fnav-dot" data-label="Deliverables" onclick="navScrollTo('deliverables')"></div>
   <div class="fnav-dot" data-label="Tech Stack" onclick="navScrollTo('tech')"></div>
+  <div class="fnav-dot" data-label="Roadmap" onclick="navScrollTo('roadmap')"></div>
 </nav>
 
 <!-- HERO -->
 <section class="hero" id="hero">
   <div class="hero-badge"><span class="dot"></span>TATA STEEL — SNTI · 6-WEEK INTERNSHIP</div>
   <h1>AIOS<span>-Lite</span><br>Mission Control</h1>
-  <p class="hero-sub">Your team's daily command center for building an AI-Native Operating System. Track tasks, learn terms, and ship on time — together.</p>
+  <p class="hero-sub">Your team's daily command center for building an adaptive AI-Native Operating System across architectures. Track workflow, align hardware-software execution, and ship together.</p>
   <div class="hero-meta">
     <div class="hero-pill"><span class="icon">🗓️</span> 30 Working Days</div>
     <div class="hero-pill"><span class="icon">👥</span> 4-Person Team</div>
@@ -1318,7 +1377,7 @@ section { scroll-margin-top: 20px; }
       <div class="team-card lead" onclick="focusTeamMember(0)">
         <div class="team-avatar lead-av">🧑‍💼</div>
         <div class="team-name" id="name-0">Team Lead</div>
-        <div><span class="team-role-badge badge-lead">PROJECT LEAD</span></div>
+        <div><span class="team-role-badge badge-lead">HARDWARE LEAD + INTEGRATION</span></div>
         <div class="team-tasks-done">Tasks: <span id="tasks-0">0</span> done today</div>
         <div class="team-member-progress">Progress: <span id="progress-0">0%</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;">
@@ -1523,6 +1582,15 @@ section { scroll-margin-top: 20px; }
       <div class="tech-card"><div class="tech-cat">Hardware</div><div class="tech-name">Raspberry Pi 4</div><div class="tech-desc">Physical ARM target, 4GB RAM</div></div>
       <div class="tech-card"><div class="tech-cat">Version Control</div><div class="tech-name">Git + GitHub</div><div class="tech-desc">Code collaboration & public release</div></div>
     </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap" class="roadmap-section">
+    <div class="section-head"><div class="section-title">Day 1 → Day 30 Roadmap</div><div class="section-line"></div></div>
+    <div class="roadmap-intro">
+      <p>This roadmap shows the complete workflow from kickoff to final presentation. The target is a cross-architecture AIOS that can run on different hardware profiles, continuously improve with usage data, and coordinate one hardware-first leader with software teammates.</p>
+    </div>
+    <div class="roadmap-list" id="roadmap-list"></div>
   </section>
 
 </div>
@@ -1741,6 +1809,14 @@ const WEEKS = [
   {label:"Week 5",theme:"Cross-Platform Testing",icon:"🔬",desc:"ARM cross-compilation, flash on Raspberry Pi 4, comprehensive benchmarking, and security hardening."},
   {label:"Week 6",theme:"Demo & Documentation",icon:"🎓",desc:"Final bug fixes, research paper, presentation deck, 5-minute demo video, GitHub v1.0 release, and final presentation."}
 ];
+const LEADER_WEEK_FOCUS = [
+  'Hardware baseline + software interface alignment',
+  'Boot path validation and bring-up checkpoints',
+  'Integration checkpoints between hardware and AI shell',
+  'Voice I/O reliability checks across targets',
+  'Cross-platform benchmark and stability ownership',
+  'Release readiness, demo hardware flow, and handoff'
+];
 
 // ===========================
 // STATE
@@ -1899,6 +1975,7 @@ function init() {
   updateProgress();
   updateDaysLeftStat();
   updateMemberNotifications();
+  renderRoadmap();
 }
 
 function setName(idx, val) {
@@ -2211,7 +2288,7 @@ function navScrollTo(id) {
 }
 
 // Update floating nav dots on scroll
-const sections = ['hero','progress','team','daily','arch','deliverables','tech'];
+const sections = ['hero','progress','team','daily','arch','deliverables','tech','roadmap'];
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     if (e.isIntersecting) {
@@ -2276,7 +2353,7 @@ function focusTeamMember(idx) {
 
   const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const pendingOrTodo = getMemberAlertItems(idx).length;
-  const roleLabelMap = { all: 'All Tasks (Software + Hardware)', software: 'Software Tasks', hardware: 'Hardware Tasks', cse: 'Software Track A', cs: 'Software Track B' };
+  const roleLabelMap = { all: 'Hardware-First + Software Coordination', software: 'Software Tasks', hardware: 'Hardware Tasks', cse: 'Software Track A', cs: 'Software Track B' };
   const roleLabel = roleLabelMap[role] || role;
 
   document.getElementById('tcl-title').textContent = `📋 ${memberName}'s Checklist`;
@@ -2379,6 +2456,38 @@ function closeMemberAlerts() {
 
 function alertOverlayClick(e) {
   if (e.target === document.getElementById('alert-overlay')) closeMemberAlerts();
+}
+
+function getRoadmapWeekIndex(weekValue) {
+  if (!LEADER_WEEK_FOCUS.length) return -1;
+  if (!Number.isInteger(weekValue)) {
+    console.warn('Invalid roadmap week index:', weekValue);
+    return -1;
+  }
+  return Math.max(0, Math.min(weekValue, LEADER_WEEK_FOCUS.length - 1));
+}
+
+function renderRoadmap() {
+  const el = document.getElementById('roadmap-list');
+  if (!el) return;
+  el.innerHTML = DAYS.map((d) => {
+    const weekIndex = getRoadmapWeekIndex(d.w);
+    const week = weekIndex >= 0 ? WEEKS[weekIndex] : null;
+    if (weekIndex >= 0 && !week) console.warn('Roadmap week metadata missing for index:', weekIndex);
+    const weekLabel = week ? week.label : 'Week TBD';
+    const weekTheme = week ? week.theme : 'Roadmap phase pending';
+    const leaderFocus = weekIndex >= 0 ? LEADER_WEEK_FOCUS[weekIndex] : 'Leader focus to be defined';
+    return `
+    <div class="roadmap-item">
+      <div class="roadmap-day">${d.d}</div>
+      <div class="roadmap-title">${d.ti}</div>
+      <div class="roadmap-meta">
+        Phase: ${weekLabel} · ${weekTheme}<br>
+        <span>Leader focus:</span> ${leaderFocus}
+      </div>
+    </div>
+  `;
+  }).join('');
 }
 
 // ===========================
