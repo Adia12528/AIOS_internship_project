@@ -1356,7 +1356,7 @@ section { scroll-margin-top: 20px; }
         <div class="team-member-progress">Progress: <span id="progress-3">0%</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;">
           <button onclick="event.stopPropagation();focusTeamMember(3)" style="background:rgba(155,107,255,0.1);border:1px solid rgba(155,107,255,0.25);color:var(--purple);border-radius:7px;padding:5px 12px;font-size:11px;font-family:'Space Mono',monospace;cursor:pointer;flex:1;">📋 View Checklist</button>
-          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(3)">��<span class="notify-count zero" id="notify-3">0</span></button>
+          <button class="notify-btn" onclick="event.stopPropagation();openMemberAlerts(3)">🔔<span class="notify-count zero" id="notify-3">0</span></button>
         </div>
       </div>
     </div>
@@ -1738,11 +1738,20 @@ const WEEKS = [
 let currentWeek = 0;
 let currentDay = 0;
 let activeTerm = null;
-let checked = JSON.parse(localStorage.getItem('aios_checked') || '{}');
-let taskStatus = JSON.parse(localStorage.getItem('aios_task_status') || '{}');
+function readStoredJson(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let checked = readStoredJson('aios_checked', {});
+let taskStatus = readStoredJson('aios_task_status', {});
 const DEFAULT_MEMBER_NAMES = ['Team Lead', 'Software Intern 1', 'Software Intern 2', 'Software Intern 3'];
 const LEGACY_MEMBER_NAMES = ['Team Lead', 'CSE Intern 1', 'CSE Intern 2', 'CS Intern'];
-const names = JSON.parse(localStorage.getItem('aios_names') || JSON.stringify(DEFAULT_MEMBER_NAMES));
+const names = readStoredJson('aios_names', DEFAULT_MEMBER_NAMES.slice());
 const TOTAL_DAYS = 30;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const MEMBER_ROLE_MAP = ['all', 'software', 'software', 'software'];
