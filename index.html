@@ -1742,6 +1742,7 @@ const TOTAL_DAYS = 30;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const MEMBER_ROLE_MAP = ['all', 'cse', 'cse', 'cs'];
 const MEMBER_LABELS = ['Team Lead', 'CSE Intern 1', 'CSE Intern 2', 'CS Intern'];
+const WEEK_DAY_GROUPS = WEEKS.map((_, wi) => DAYS.filter((d) => d.w === wi));
 let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
 let migratedTaskStatus = false;
 
@@ -1754,7 +1755,7 @@ Object.keys(checked).forEach((key) => {
 if (migratedTaskStatus) localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
 
 function getTaskStatus(key) {
-  return taskStatus[key] || (checked[key] ? 'done' : 'todo');
+  return taskStatus[key] || 'todo';
 }
 
 function isTaskDone(key) {
@@ -1771,7 +1772,10 @@ function setTaskStatus(key, status) {
 
 function getDaysLeft() {
   if (!progressStartDate) return TOTAL_DAYS;
-  const elapsed = Math.floor((Date.now() - new Date(progressStartDate).getTime()) / MS_PER_DAY);
+  const todayUtc = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  const started = new Date(progressStartDate);
+  const startUtc = Date.UTC(started.getUTCFullYear(), started.getUTCMonth(), started.getUTCDate());
+  const elapsed = Math.floor((todayUtc - startUtc) / MS_PER_DAY);
   return Math.max(0, TOTAL_DAYS - elapsed);
 }
 
@@ -1787,6 +1791,9 @@ function startProgressTracking() {
   if (!progressStartDate) {
     progressStartDate = new Date().toISOString();
     localStorage.setItem('aios_progress_start_date', progressStartDate);
+  } else {
+    const info = document.getElementById('progress-start-info');
+    if (info) info.textContent = `Already started: ${new Date(progressStartDate).toLocaleDateString()}`;
   }
   updateDaysLeftStat();
 }
@@ -1888,8 +1895,7 @@ function selectWeek(wi) {
   activeTerm = null;
   document.querySelectorAll('.wtab').forEach((b, i) => b.classList.toggle('active', i===wi));
   buildDayTabs(wi);
-  const dayIdx = DAYS.findIndex(d => d.w === wi);
-  renderDay(wi, dayIdx >= 0 ? dayIdx : 0);
+  renderDay(wi, 0);
   updateMilestoneBanner(wi);
 }
 
@@ -1905,7 +1911,7 @@ function updateMilestoneBanner(wi) {
 function buildDayTabs(wi) {
   const el = document.getElementById('day-tabs');
   document.getElementById('week-label').textContent = WEEKS[wi].theme;
-  const wdays = DAYS.filter(d => d.w === wi);
+  const wdays = WEEK_DAY_GROUPS[wi] || [];
   el.innerHTML = wdays.map((d, i) => {
     const allDone = isDayDone(wi, i);
     return `<button class="dtab${i===0?' active':''}${allDone?' done':''}" id="dtab-${wi}-${i}" onclick="selectDay(${wi},${i})">${d.d}</button>`;
@@ -1915,13 +1921,12 @@ function buildDayTabs(wi) {
 function selectDay(wi, di) {
   activeTerm = null;
   currentWeek = wi;
-  currentDay = di;
   document.querySelectorAll('.dtab').forEach((b, i) => b.classList.toggle('active', i===di));
   renderDay(wi, di);
 }
 
 function isDayDone(wi, di) {
-  const d = DAYS.filter(x => x.w === wi)[di];
+  const d = (WEEK_DAY_GROUPS[wi] || [])[di];
   if (!d) return false;
   const totalTasks = d.cse.length + d.cs.length;
   const doneCount = [...d.cse, ...d.cs].filter((t, i) => {
@@ -1935,7 +1940,7 @@ function isDayDone(wi, di) {
 // RENDER DAY
 // ===========================
 function renderDay(wi, globalIdx) {
-  const wdays = DAYS.filter(d => d.w === wi);
+  const wdays = WEEK_DAY_GROUPS[wi] || [];
   const di = typeof globalIdx === 'number' && globalIdx < wdays.length ? globalIdx : 0;
   currentDay = di;
   const d = wdays[di];
@@ -2060,7 +2065,7 @@ function updateProgress() {
 function buildWeekProgress() {
   const el = document.getElementById('week-progress-row');
   el.innerHTML = WEEKS.map((w, wi) => {
-    const wdays = DAYS.filter(d => d.w === wi);
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
     const total = wdays.reduce((s, d) => s + d.cse.length + d.cs.length, 0);
     let done = 0;
     wdays.forEach((d, di) => {
@@ -2081,7 +2086,7 @@ function buildWeekProgress() {
 function updateTeamCounts() {
   // Count how many tasks are done today for each role
   const wi = currentWeek;
-  const wdays = DAYS.filter(d => d.w === wi);
+  const wdays = WEEK_DAY_GROUPS[wi] || [];
   const di = wdays.findIndex((d, i) => {
     const tab = document.querySelector('.dtab.active');
     if (!tab) return i === 0;
@@ -2100,7 +2105,7 @@ function updateTeamCounts() {
   const memberTotals = Array(names.length).fill(0);
   const memberDone = Array(names.length).fill(0);
   DAYS.forEach((day) => {
-    const wdays = DAYS.filter(x => x.w === day.w);
+    const wdays = WEEK_DAY_GROUPS[day.w] || [];
     const diAll = wdays.indexOf(day);
     day.cse.forEach((t, i) => {
       const key = `${day.w}-${diAll}-cse-${i}`;
@@ -2185,7 +2190,7 @@ function focusTeamMember(idx) {
   }
 
   const weekGroups = WEEKS.map((w, wi) => {
-    const wdays = DAYS.filter(d => d.w === wi);
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
     const dayRows = wdays.map((d, di) => {
       let roleTasks = '';
       if (role === 'all' || role === 'cse') {
@@ -2244,7 +2249,7 @@ function getMemberAlertItems(memberIdx) {
   const items = [];
   DAYS.forEach((d) => {
     const wi = d.w;
-    const wdays = DAYS.filter(x => x.w === wi);
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
     const di = wdays.indexOf(d);
     if (role === 'all' || role === 'cse') {
       d.cse.forEach((t, i) => {
