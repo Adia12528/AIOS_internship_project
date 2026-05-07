@@ -1739,12 +1739,19 @@ let checked = JSON.parse(localStorage.getItem('aios_checked') || '{}');
 let taskStatus = JSON.parse(localStorage.getItem('aios_task_status') || '{}');
 const names = JSON.parse(localStorage.getItem('aios_names') || '["Team Lead","CSE Intern 1","CSE Intern 2","CS Intern"]');
 const TOTAL_DAYS = 30;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const MEMBER_ROLE_MAP = ['all', 'cse', 'cse', 'cs'];
+const MEMBER_LABELS = ['Team Lead', 'CSE Intern 1', 'CSE Intern 2', 'CS Intern'];
 let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
+let migratedTaskStatus = false;
 
 Object.keys(checked).forEach((key) => {
-  if (checked[key] && !taskStatus[key]) taskStatus[key] = 'done';
+  if (checked[key] && !taskStatus[key]) {
+    taskStatus[key] = 'done';
+    migratedTaskStatus = true;
+  }
 });
-localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
+if (migratedTaskStatus) localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
 
 function getTaskStatus(key) {
   return taskStatus[key] || (checked[key] ? 'done' : 'todo');
@@ -1760,15 +1767,11 @@ function setTaskStatus(key, status) {
   checked[key] = status === 'done';
   localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
   localStorage.setItem('aios_checked', JSON.stringify(checked));
-  if (!progressStartDate && status !== 'todo') {
-    progressStartDate = new Date().toISOString();
-    localStorage.setItem('aios_progress_start_date', progressStartDate);
-  }
 }
 
 function getDaysLeft() {
   if (!progressStartDate) return TOTAL_DAYS;
-  const elapsed = Math.floor((Date.now() - new Date(progressStartDate).getTime()) / (1000 * 60 * 60 * 24));
+  const elapsed = Math.floor((Date.now() - new Date(progressStartDate).getTime()) / MS_PER_DAY);
   return Math.max(0, TOTAL_DAYS - elapsed);
 }
 
@@ -2094,8 +2097,8 @@ function updateTeamCounts() {
   document.getElementById('tasks-3').textContent = csDone;
   document.getElementById('tasks-0').textContent = cseDone + csDone;
 
-  const memberTotals = [0, 0, 0, 0];
-  const memberDone = [0, 0, 0, 0];
+  const memberTotals = Array(names.length).fill(0);
+  const memberDone = Array(names.length).fill(0);
   DAYS.forEach((day) => {
     const wdays = DAYS.filter(x => x.w === day.w);
     const diAll = wdays.indexOf(day);
@@ -2110,7 +2113,7 @@ function updateTeamCounts() {
       if (isTaskDone(key)) { memberDone[0]++; memberDone[3]++; }
     });
   });
-  [0,1,2,3].forEach((idx) => {
+  names.forEach((_, idx) => {
     const pct = memberTotals[idx] ? Math.round((memberDone[idx] / memberTotals[idx]) * 100) : 0;
     const progressEl = document.getElementById(`progress-${idx}`);
     if (progressEl) progressEl.textContent = `${pct}%`;
@@ -2160,10 +2163,8 @@ sections.forEach(id => {
 // FOCUS TEAM MEMBER / CHECKLIST MODAL
 // ===========================
 function focusTeamMember(idx) {
-  const roleMap = ['all', 'cse', 'cse', 'cs'];
-  const labelMap = ['Team Lead', 'CSE Intern 1', 'CSE Intern 2', 'CS Intern'];
-  const role = roleMap[idx];
-  const memberName = names[idx] || labelMap[idx];
+  const role = MEMBER_ROLE_MAP[idx];
+  const memberName = names[idx] || MEMBER_LABELS[idx];
 
   let totalTasks = 0, doneTasks = 0;
 
@@ -2239,8 +2240,7 @@ function toggleModalTaskDone(key, memberIdx) {
 }
 
 function getMemberAlertItems(memberIdx) {
-  const roleMap = ['all', 'cse', 'cse', 'cs'];
-  const role = roleMap[memberIdx] || 'all';
+  const role = MEMBER_ROLE_MAP[memberIdx] || 'all';
   const items = [];
   DAYS.forEach((d) => {
     const wi = d.w;
@@ -2265,7 +2265,7 @@ function getMemberAlertItems(memberIdx) {
 }
 
 function updateMemberNotifications() {
-  [0,1,2,3].forEach((idx) => {
+  names.forEach((_, idx) => {
     const count = getMemberAlertItems(idx).length;
     const badge = document.getElementById(`notify-${idx}`);
     if (badge) {
@@ -2276,7 +2276,7 @@ function updateMemberNotifications() {
 }
 
 function openMemberAlerts(memberIdx) {
-  const memberName = names[memberIdx] || ['Team Lead','CSE Intern 1','CSE Intern 2','CS Intern'][memberIdx];
+  const memberName = names[memberIdx] || MEMBER_LABELS[memberIdx];
   const items = getMemberAlertItems(memberIdx);
   document.getElementById('alert-title').textContent = `🔔 ${memberName} — Pending / Incomplete Tasks`;
   document.getElementById('alert-sub').textContent = `${items.length} task(s) need attention`;
