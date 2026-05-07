@@ -2459,23 +2459,31 @@ function alertOverlayClick(e) {
 }
 
 function getRoadmapWeekIndex(weekValue) {
-  const numericWeek = Number.isInteger(weekValue) ? weekValue : 0;
-  return Math.max(0, Math.min(numericWeek, LEADER_WEEK_FOCUS.length - 1));
+  if (!LEADER_WEEK_FOCUS.length) return -1;
+  if (!Number.isInteger(weekValue)) {
+    console.warn('Invalid roadmap week index:', weekValue);
+    return 0;
+  }
+  return Math.max(0, Math.min(weekValue, LEADER_WEEK_FOCUS.length - 1));
 }
 
 function renderRoadmap() {
   const el = document.getElementById('roadmap-list');
   if (!el) return;
-  el.innerHTML = DAYS.map((d, idx) => `
+  el.innerHTML = DAYS.map((d) => {
+    const weekIndex = getRoadmapWeekIndex(d.w);
+    const leaderFocus = weekIndex >= 0 ? LEADER_WEEK_FOCUS[weekIndex] : 'Leader focus to be defined';
+    return `
     <div class="roadmap-item">
       <div class="roadmap-day">${d.d}</div>
       <div class="roadmap-title">${d.ti}</div>
       <div class="roadmap-meta">
         Phase: ${WEEKS[d.w].label} · ${WEEKS[d.w].theme}<br>
-        <span>Leader focus:</span> ${LEADER_WEEK_FOCUS[getRoadmapWeekIndex(d.w)]}
+        <span>Leader focus:</span> ${leaderFocus}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ===========================
