@@ -1882,8 +1882,9 @@ function getMemberTaskKey(memberIdx, key) {
 }
 
 const memberTaskMigrationDone = localStorage.getItem(MEMBER_TASK_MIGRATION_KEY) === '1';
+const shouldMigrateMemberTasks = !memberTaskMigrationDone && !Object.keys(memberTaskStatus).length && Object.keys(taskStatus).length;
 
-if (!memberTaskMigrationDone && !Object.keys(memberTaskStatus).length && Object.keys(taskStatus).length) {
+if (shouldMigrateMemberTasks) {
   Object.keys(taskStatus).forEach((key) => {
     const taskType = getTaskTypeFromKey(key);
     if (!taskType) return;
@@ -1900,7 +1901,7 @@ if (!memberTaskMigrationDone && !Object.keys(memberTaskStatus).length && Object.
 if (migratedMemberTaskStatus) {
   localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
 }
-if (!memberTaskMigrationDone && (migratedMemberTaskStatus || Object.keys(memberTaskStatus).length)) {
+if (!memberTaskMigrationDone && (shouldMigrateMemberTasks || Object.keys(memberTaskStatus).length)) {
   localStorage.setItem(MEMBER_TASK_MIGRATION_KEY, '1');
 }
 
@@ -1934,6 +1935,23 @@ function setMemberTaskStatus(memberIdx, key, status) {
   if (status === 'todo') delete memberTaskStatus[memberKey];
   else memberTaskStatus[memberKey] = status;
   localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
+}
+
+function syncSharedTaskStatusFromMembers(key) {
+  const taskType = getTaskTypeFromKey(key);
+  if (!taskType) return;
+  const assignedMembers = MEMBER_ROLE_MAP
+    .map((role, idx) => ({ role, idx }))
+    .filter(({ role }) => roleIncludesTaskType(role, taskType))
+    .map(({ idx }) => idx);
+  if (!assignedMembers.length) return;
+  const statuses = assignedMembers.map((memberIdx) => getMemberTaskStatus(memberIdx, key));
+  const sharedStatus = statuses.every((status) => status === 'done')
+    ? 'done'
+    : statuses.some((status) => status === 'done' || status === 'pending')
+      ? 'pending'
+      : 'todo';
+  setTaskStatus(key, sharedStatus);
 }
 
 function getDaysLeft() {
@@ -2436,8 +2454,10 @@ function tclOverlayClick(e) {
 function setModalTaskState(key, memberIdx, state) {
   const nextState = getMemberTaskStatus(memberIdx, key) === state ? 'todo' : state;
   setMemberTaskStatus(memberIdx, key, nextState);
-  updateTeamCounts();
-  updateMemberNotifications();
+  syncSharedTaskStatusFromMembers(key);
+  const parts = key.split('-');
+  refreshTaskAggregates(parseInt(parts[0]), parseInt(parts[1]));
+  renderDay(currentWeek, currentDay);
   focusTeamMember(memberIdx);
 }
 
