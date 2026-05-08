@@ -1222,6 +1222,83 @@ section { scroll-margin-top: 20px; }
 
 .notify-count.zero { display: none; }
 
+/* ===== INDIVIDUAL MEMBER CHECKLISTS ===== */
+.mcl-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 700px) { .mcl-grid { grid-template-columns: 1fr; } }
+
+.mcl-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mcl-panel:hover { border-color: var(--border2); }
+.mcl-panel.open { border-color: var(--border2); box-shadow: 0 4px 24px rgba(0,0,0,0.18); }
+
+.mcl-panel-header {
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.mcl-panel-header:hover { background: var(--bg2); }
+
+.mcl-panel-info { flex: 1; min-width: 0; }
+
+.mcl-panel-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mcl-panel-meta {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'Space Mono', monospace;
+}
+
+.mcl-panel-toggle {
+  font-size: 12px;
+  color: var(--text3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.mcl-panel.open .mcl-panel-toggle { transform: rotate(180deg); }
+
+.mcl-panel-progress { height: 3px; background: var(--bg3); }
+
+.mcl-panel-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.mcl-panel-body {
+  display: none;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--border);
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.mcl-panel.open .mcl-panel-body { display: block; }
+
 .team-member-progress {
   font-size: 11px;
   color: var(--text3);
@@ -1320,6 +1397,7 @@ section { scroll-margin-top: 20px; }
   <div class="fnav-dot active" data-label="Mission" onclick="navScrollTo('hero')"></div>
   <div class="fnav-dot" data-label="Progress" onclick="navScrollTo('progress')"></div>
   <div class="fnav-dot" data-label="Team" onclick="navScrollTo('team')"></div>
+  <div class="fnav-dot" data-label="My Checklist" onclick="navScrollTo('member-checklists')"></div>
   <div class="fnav-dot" data-label="Daily Plan" onclick="navScrollTo('daily')"></div>
   <div class="fnav-dot" data-label="Architecture" onclick="navScrollTo('arch')"></div>
   <div class="fnav-dot" data-label="Deliverables" onclick="navScrollTo('deliverables')"></div>
@@ -1458,6 +1536,65 @@ section { scroll-margin-top: 20px; }
           <button class="ll-btn" style="margin-left:0;" onclick="startProgressTracking()">▶ Start Progress Tracker</button>
           <div id="progress-start-info" style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INDIVIDUAL MEMBER CHECKLISTS -->
+  <section id="member-checklists">
+    <div class="section-head"><div class="section-title">Individual Checklists</div><div class="section-line"></div></div>
+    <div class="mcl-grid">
+      <!-- Panel 0: Team Lead -->
+      <div class="mcl-panel" id="mcl-panel-0">
+        <div class="mcl-panel-header" onclick="toggleMemberPanel(0)">
+          <div class="team-avatar lead-av" style="width:38px;height:38px;border-radius:10px;font-size:1.1rem;flex-shrink:0;">🧑‍💼</div>
+          <div class="mcl-panel-info">
+            <div class="mcl-panel-name" id="mcl-name-0">Team Lead</div>
+            <div class="mcl-panel-meta" id="mcl-meta-0">0/0 completed · 0%</div>
+          </div>
+          <div class="mcl-panel-toggle">▼</div>
+        </div>
+        <div class="mcl-panel-progress"><div class="mcl-panel-progress-fill" id="mcl-fill-0" style="width:0%;background:linear-gradient(90deg,var(--accent4),var(--accent));"></div></div>
+        <div class="mcl-panel-body" id="mcl-body-0"></div>
+      </div>
+      <!-- Panel 1: Software Intern 1 -->
+      <div class="mcl-panel" id="mcl-panel-1">
+        <div class="mcl-panel-header" onclick="toggleMemberPanel(1)">
+          <div class="team-avatar soft-1-av" style="width:38px;height:38px;border-radius:10px;font-size:1.1rem;flex-shrink:0;">💻</div>
+          <div class="mcl-panel-info">
+            <div class="mcl-panel-name" id="mcl-name-1">Software Intern 1</div>
+            <div class="mcl-panel-meta" id="mcl-meta-1">0/0 completed · 0%</div>
+          </div>
+          <div class="mcl-panel-toggle">▼</div>
+        </div>
+        <div class="mcl-panel-progress"><div class="mcl-panel-progress-fill" id="mcl-fill-1" style="width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));"></div></div>
+        <div class="mcl-panel-body" id="mcl-body-1"></div>
+      </div>
+      <!-- Panel 2: Software Intern 2 -->
+      <div class="mcl-panel" id="mcl-panel-2">
+        <div class="mcl-panel-header" onclick="toggleMemberPanel(2)">
+          <div class="team-avatar soft-2-av" style="width:38px;height:38px;border-radius:10px;font-size:1.1rem;flex-shrink:0;">🧠</div>
+          <div class="mcl-panel-info">
+            <div class="mcl-panel-name" id="mcl-name-2">Software Intern 2</div>
+            <div class="mcl-panel-meta" id="mcl-meta-2">0/0 completed · 0%</div>
+          </div>
+          <div class="mcl-panel-toggle">▼</div>
+        </div>
+        <div class="mcl-panel-progress"><div class="mcl-panel-progress-fill" id="mcl-fill-2" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));"></div></div>
+        <div class="mcl-panel-body" id="mcl-body-2"></div>
+      </div>
+      <!-- Panel 3: Software Intern 3 -->
+      <div class="mcl-panel" id="mcl-panel-3">
+        <div class="mcl-panel-header" onclick="toggleMemberPanel(3)">
+          <div class="team-avatar soft-3-av" style="width:38px;height:38px;border-radius:10px;font-size:1.1rem;flex-shrink:0;">⚙️</div>
+          <div class="mcl-panel-info">
+            <div class="mcl-panel-name" id="mcl-name-3">Software Intern 3</div>
+            <div class="mcl-panel-meta" id="mcl-meta-3">0/0 completed · 0%</div>
+          </div>
+          <div class="mcl-panel-toggle">▼</div>
+        </div>
+        <div class="mcl-panel-progress"><div class="mcl-panel-progress-fill" id="mcl-fill-3" style="width:0%;background:linear-gradient(90deg,var(--purple),var(--accent2));"></div></div>
+        <div class="mcl-panel-body" id="mcl-body-3"></div>
       </div>
     </div>
   </section>
@@ -2052,6 +2189,7 @@ function init() {
   updateProgress();
   updateDaysLeftStat();
   updateMemberNotifications();
+  renderMemberChecklists();
   renderRoadmap();
 }
 
@@ -2059,6 +2197,8 @@ function setName(idx, val) {
   const defaults = DEFAULT_MEMBER_NAMES;
   names[idx] = val || defaults[idx];
   document.getElementById('name-'+idx).textContent = names[idx];
+  const mclName = document.getElementById('mcl-name-'+idx);
+  if (mclName) mclName.textContent = names[idx];
   localStorage.setItem('aios_names', JSON.stringify(names));
 }
 
@@ -2208,6 +2348,7 @@ function refreshTaskAggregates(wi, di) {
   updateProgress();
   updateTeamCounts();
   updateMemberNotifications();
+  renderMemberChecklists();
   updateDaysLeftStat();
   // Update day tab done status
   const allDone = isDayDone(wi, di);
@@ -2366,7 +2507,7 @@ function navScrollTo(id) {
 }
 
 // Update floating nav dots on scroll
-const sections = ['hero','progress','team','daily','arch','deliverables','tech','roadmap'];
+const sections = ['hero','progress','team','member-checklists','daily','arch','deliverables','tech','roadmap'];
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     if (e.isIntersecting) {
@@ -2380,6 +2521,113 @@ sections.forEach(id => {
   const el = document.getElementById(id);
   if (el) observer.observe(el);
 });
+
+// ===========================
+// INDIVIDUAL MEMBER CHECKLISTS (INLINE)
+// ===========================
+function getMemberChecklistTotals(memberIdx) {
+  const role = MEMBER_ROLE_MAP[memberIdx];
+  let total = 0, done = 0;
+  DAYS.forEach((d) => {
+    const wi = d.w;
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
+    const di = wdays.indexOf(d);
+    if (role === 'all' || role === 'software' || role === 'cse') {
+      d.cse.forEach((_, i) => { total++; if (isMemberTaskDone(memberIdx, `${wi}-${di}-cse-${i}`)) done++; });
+    }
+    if (role === 'all' || role === 'software' || role === 'cs') {
+      d.cs.forEach((_, i) => { total++; if (isMemberTaskDone(memberIdx, `${wi}-${di}-cs-${i}`)) done++; });
+    }
+    if (role === 'all' || role === 'hardware') {
+      (d.hw || []).forEach((_, i) => { total++; if (isMemberTaskDone(memberIdx, `${wi}-${di}-hw-${i}`)) done++; });
+    }
+  });
+  return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+
+function renderMemberChecklistBody(memberIdx) {
+  const role = MEMBER_ROLE_MAP[memberIdx];
+
+  function makeInlineItem(text, key, mIdx) {
+    const status = getMemberTaskStatus(mIdx, key);
+    const done = status === 'done';
+    const pending = status === 'pending';
+    return `<div class="tcl-task${done ? ' checked' : ''}${pending ? ' pending' : ''}">
+      <div class="tcl-checkbox" onclick="setMcTaskState('${key}',${mIdx},'done')">${done ? '✓' : pending ? '⏳' : ''}</div>
+      <div class="tcl-task-text">${text}</div>
+      <div class="tcl-task-actions">
+        <button class="task-act-btn done${done ? ' active' : ''}" onclick="setMcTaskState('${key}',${mIdx},'done')">Done</button>
+        <button class="task-act-btn pending${pending ? ' active' : ''}" onclick="setMcTaskState('${key}',${mIdx},'pending')">Pending</button>
+      </div>
+    </div>`;
+  }
+
+  return WEEKS.map((w, wi) => {
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
+    const dayRows = wdays.map((d, di) => {
+      let tasks = '';
+      if (role === 'all' || role === 'software' || role === 'cse') {
+        tasks += d.cse.map((t, i) => makeInlineItem(t, `${wi}-${di}-cse-${i}`, memberIdx)).join('');
+      }
+      if (role === 'all' || role === 'software' || role === 'cs') {
+        tasks += d.cs.map((t, i) => makeInlineItem(t, `${wi}-${di}-cs-${i}`, memberIdx)).join('');
+      }
+      if (role === 'all' || role === 'hardware') {
+        tasks += (d.hw || []).map((t, i) => makeInlineItem(t, `${wi}-${di}-hw-${i}`, memberIdx)).join('');
+      }
+      if (!tasks) return '';
+      return `<div class="tcl-day-label">📅 ${d.d} — ${d.ti}</div>${tasks}`;
+    }).filter(Boolean).join('');
+    if (!dayRows) return '';
+    return `<div class="tcl-week-group">
+      <div class="tcl-week-label">${w.icon} ${w.label}: ${w.theme}</div>
+      ${dayRows}
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
+function renderMemberChecklists() {
+  names.forEach((_, idx) => {
+    const { total, done, pct } = getMemberChecklistTotals(idx);
+    const metaEl = document.getElementById(`mcl-meta-${idx}`);
+    const fillEl = document.getElementById(`mcl-fill-${idx}`);
+    const nameEl = document.getElementById(`mcl-name-${idx}`);
+    if (nameEl) nameEl.textContent = names[idx] || MEMBER_LABELS[idx];
+    if (metaEl) metaEl.textContent = `${done}/${total} completed · ${pct}%`;
+    if (fillEl) fillEl.style.width = pct + '%';
+    const panel = document.getElementById(`mcl-panel-${idx}`);
+    if (panel && panel.classList.contains('open')) {
+      const body = document.getElementById(`mcl-body-${idx}`);
+      if (body) body.innerHTML = renderMemberChecklistBody(idx);
+    }
+  });
+}
+
+function toggleMemberPanel(idx) {
+  const panel = document.getElementById(`mcl-panel-${idx}`);
+  if (!panel) return;
+  const wasOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !wasOpen);
+  if (!wasOpen) {
+    const body = document.getElementById(`mcl-body-${idx}`);
+    if (body) body.innerHTML = renderMemberChecklistBody(idx);
+  }
+}
+
+function setMcTaskState(key, memberIdx, state) {
+  const nextState = getMemberTaskStatus(memberIdx, key) === state ? 'todo' : state;
+  setMemberTaskStatus(memberIdx, key, nextState);
+  syncSharedTaskStatusFromMembers(key);
+  const parts = key.split('-');
+  refreshTaskAggregates(parseInt(parts[0]), parseInt(parts[1]));
+  const body = document.getElementById(`mcl-body-${memberIdx}`);
+  if (body) body.innerHTML = renderMemberChecklistBody(memberIdx);
+  const { total, done, pct } = getMemberChecklistTotals(memberIdx);
+  const metaEl = document.getElementById(`mcl-meta-${memberIdx}`);
+  const fillEl = document.getElementById(`mcl-fill-${memberIdx}`);
+  if (metaEl) metaEl.textContent = `${done}/${total} completed · ${pct}%`;
+  if (fillEl) fillEl.style.width = pct + '%';
+}
 
 // ===========================
 // FOCUS TEAM MEMBER / CHECKLIST MODAL
