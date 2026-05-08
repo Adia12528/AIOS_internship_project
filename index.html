@@ -1397,7 +1397,7 @@ section { scroll-margin-top: 20px; }
   <div class="fnav-dot active" data-label="Mission" onclick="navScrollTo('hero')"></div>
   <div class="fnav-dot" data-label="Progress" onclick="navScrollTo('progress')"></div>
   <div class="fnav-dot" data-label="Team" onclick="navScrollTo('team')"></div>
-  <div class="fnav-dot" data-label="My Checklist" onclick="navScrollTo('member-checklists')"></div>
+  <div class="fnav-dot" data-label="Individual Checklists" onclick="navScrollTo('member-checklists')"></div>
   <div class="fnav-dot" data-label="Daily Plan" onclick="navScrollTo('daily')"></div>
   <div class="fnav-dot" data-label="Architecture" onclick="navScrollTo('arch')"></div>
   <div class="fnav-dot" data-label="Deliverables" onclick="navScrollTo('deliverables')"></div>
@@ -2553,11 +2553,11 @@ function renderMemberChecklistBody(memberIdx) {
     const done = status === 'done';
     const pending = status === 'pending';
     return `<div class="tcl-task${done ? ' checked' : ''}${pending ? ' pending' : ''}">
-      <div class="tcl-checkbox" onclick="setMcTaskState('${key}',${mIdx},'done')">${done ? '✓' : pending ? '⏳' : ''}</div>
+      <div class="tcl-checkbox">${done ? '✓' : pending ? '⏳' : ''}</div>
       <div class="tcl-task-text">${text}</div>
       <div class="tcl-task-actions">
-        <button class="task-act-btn done${done ? ' active' : ''}" onclick="setMcTaskState('${key}',${mIdx},'done')">Done</button>
-        <button class="task-act-btn pending${pending ? ' active' : ''}" onclick="setMcTaskState('${key}',${mIdx},'pending')">Pending</button>
+        <button class="task-act-btn done${done ? ' active' : ''}" onclick="setMemberChecklistTaskState('${key}',${mIdx},'done')">Done</button>
+        <button class="task-act-btn pending${pending ? ' active' : ''}" onclick="setMemberChecklistTaskState('${key}',${mIdx},'pending')">Pending</button>
       </div>
     </div>`;
   }
@@ -2614,7 +2614,7 @@ function toggleMemberPanel(idx) {
   }
 }
 
-function setMcTaskState(key, memberIdx, state) {
+function setMemberChecklistTaskState(key, memberIdx, state) {
   const nextState = getMemberTaskStatus(memberIdx, key) === state ? 'todo' : state;
   setMemberTaskStatus(memberIdx, key, nextState);
   syncSharedTaskStatusFromMembers(key);
