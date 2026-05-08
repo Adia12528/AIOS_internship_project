@@ -1835,6 +1835,7 @@ function readStoredJson(key, fallback) {
 
 let checked = readStoredJson('aios_checked', {});
 let taskStatus = readStoredJson('aios_task_status', {});
+let memberTaskStatus = readStoredJson('aios_member_task_status', {});
 const DEFAULT_MEMBER_NAMES = ['Team Lead', 'Software Intern 1', 'Software Intern 2', 'Software Intern 3'];
 const LEGACY_MEMBER_NAMES = ['Team Lead', 'CSE Intern 1', 'CSE Intern 2', 'CS Intern'];
 const names = readStoredJson('aios_names', DEFAULT_MEMBER_NAMES.slice());
@@ -1843,8 +1844,11 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const MEMBER_ROLE_MAP = ['all', 'software', 'software', 'software'];
 const MEMBER_LABELS = DEFAULT_MEMBER_NAMES;
 const WEEK_DAY_GROUPS = WEEKS.map((_, wi) => DAYS.filter((d) => d.w === wi));
+const MEMBER_TASK_KEY_SEPARATOR = '::';
+const MEMBER_TASK_MIGRATION_KEY = 'aios_member_task_migrated_v1';
 let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
 let migratedTaskStatus = false;
+let migratedMemberTaskStatus = false;
 
 Object.keys(checked).forEach((key) => {
   if (checked[key] && !taskStatus[key]) {
@@ -1861,6 +1865,46 @@ if (names.some((name, idx) => name === LEGACY_MEMBER_NAMES[idx])) {
 
 if (migratedTaskStatus) localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
 
+function getTaskTypeFromKey(key) {
+  const parts = key.split('-');
+  return parts.length >= 4 ? parts[2] : '';
+}
+
+function roleIncludesTaskType(role, taskType) {
+  if (role === 'all') return true;
+  if (role === 'software') return taskType === 'cse' || taskType === 'cs';
+  if (role === 'hardware') return taskType === 'hw';
+  return role === taskType;
+}
+
+function getMemberTaskKey(memberIdx, key) {
+  return `${memberIdx}${MEMBER_TASK_KEY_SEPARATOR}${key}`;
+}
+
+const memberTaskMigrationDone = localStorage.getItem(MEMBER_TASK_MIGRATION_KEY) === '1';
+const shouldMigrateMemberTasks = !memberTaskMigrationDone && !Object.keys(memberTaskStatus).length && Object.keys(taskStatus).length;
+
+if (shouldMigrateMemberTasks) {
+  Object.keys(taskStatus).forEach((key) => {
+    const taskType = getTaskTypeFromKey(key);
+    if (!taskType) return;
+    const status = taskStatus[key];
+    if (!status || status === 'todo') return;
+    MEMBER_ROLE_MAP.forEach((role, memberIdx) => {
+      if (!roleIncludesTaskType(role, taskType)) return;
+      memberTaskStatus[getMemberTaskKey(memberIdx, key)] = status;
+      migratedMemberTaskStatus = true;
+    });
+  });
+}
+
+if (migratedMemberTaskStatus) {
+  localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
+}
+if (!memberTaskMigrationDone && (shouldMigrateMemberTasks || Object.keys(memberTaskStatus).length)) {
+  localStorage.setItem(MEMBER_TASK_MIGRATION_KEY, '1');
+}
+
 function getTaskStatus(key) {
   return taskStatus[key] || 'todo';
 }
@@ -1872,9 +1916,42 @@ function isTaskDone(key) {
 function setTaskStatus(key, status) {
   if (status === 'todo') delete taskStatus[key];
   else taskStatus[key] = status;
+  // Keep shared task storage for the daily team checklist and overall progress widgets.
   checked[key] = status === 'done';
   localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
   localStorage.setItem('aios_checked', JSON.stringify(checked));
+}
+
+function getMemberTaskStatus(memberIdx, key) {
+  return memberTaskStatus[getMemberTaskKey(memberIdx, key)] || 'todo';
+}
+
+function isMemberTaskDone(memberIdx, key) {
+  return getMemberTaskStatus(memberIdx, key) === 'done';
+}
+
+function setMemberTaskStatus(memberIdx, key, status) {
+  const memberKey = getMemberTaskKey(memberIdx, key);
+  if (status === 'todo') delete memberTaskStatus[memberKey];
+  else memberTaskStatus[memberKey] = status;
+  localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
+}
+
+function syncSharedTaskStatusFromMembers(key) {
+  const taskType = getTaskTypeFromKey(key);
+  if (!taskType) return;
+  const assignedMembers = MEMBER_ROLE_MAP
+    .map((role, idx) => ({ role, idx }))
+    .filter(({ role }) => roleIncludesTaskType(role, taskType))
+    .map(({ idx }) => idx);
+  if (!assignedMembers.length) return;
+  const statuses = assignedMembers.map((memberIdx) => getMemberTaskStatus(memberIdx, key));
+  const sharedStatus = statuses.every((status) => status === 'done')
+    ? 'done'
+    : statuses.some((status) => status === 'done' || status === 'pending')
+      ? 'pending'
+      : 'todo';
+  setTaskStatus(key, sharedStatus);
 }
 
 function getDaysLeft() {
@@ -2201,62 +2278,63 @@ function updateTeamCounts() {
   });
   const d = wdays[di >= 0 ? di : 0];
   if (!d) return;
-  let cseDone = 0, csDone = 0, hwDone = 0;
-  d.cse.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cse-${i}`)) cseDone++; });
-  d.cs.forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-cs-${i}`)) csDone++; });
-  (d.hw || []).forEach((t, i) => { if (isTaskDone(`${wi}-${di >= 0 ? di : 0}-hw-${i}`)) hwDone++; });
-  const softwareDone = cseDone + csDone;
-  const leadDone = softwareDone + hwDone;
-  document.getElementById('tasks-1').textContent = softwareDone;
-  document.getElementById('tasks-2').textContent = softwareDone;
-  document.getElementById('tasks-3').textContent = softwareDone;
-  document.getElementById('tasks-0').textContent = leadDone;
+
+  const todayIndex = di >= 0 ? di : 0;
+  const memberTodayDone = Array(names.length).fill(0);
+  d.cse.forEach((_, i) => {
+    const key = `${wi}-${todayIndex}-cse-${i}`;
+    MEMBER_ROLE_MAP.forEach((role, memberIdx) => {
+      if (roleIncludesTaskType(role, 'cse') && isMemberTaskDone(memberIdx, key)) memberTodayDone[memberIdx]++;
+    });
+  });
+  d.cs.forEach((_, i) => {
+    const key = `${wi}-${todayIndex}-cs-${i}`;
+    MEMBER_ROLE_MAP.forEach((role, memberIdx) => {
+      if (roleIncludesTaskType(role, 'cs') && isMemberTaskDone(memberIdx, key)) memberTodayDone[memberIdx]++;
+    });
+  });
+  (d.hw || []).forEach((_, i) => {
+    const key = `${wi}-${todayIndex}-hw-${i}`;
+    MEMBER_ROLE_MAP.forEach((role, memberIdx) => {
+      if (roleIncludesTaskType(role, 'hw') && isMemberTaskDone(memberIdx, key)) memberTodayDone[memberIdx]++;
+    });
+  });
+  memberTodayDone.forEach((count, idx) => {
+    const tasksEl = document.getElementById(`tasks-${idx}`);
+    if (tasksEl) tasksEl.textContent = count;
+  });
 
   const memberTotals = Array(names.length).fill(0);
   const memberDone = Array(names.length).fill(0);
   DAYS.forEach((day) => {
-    const wdays = WEEK_DAY_GROUPS[day.w] || [];
-    const diAll = wdays.indexOf(day);
-    day.cse.forEach((t, i) => {
+    const weekDays = WEEK_DAY_GROUPS[day.w] || [];
+    const diAll = weekDays.indexOf(day);
+    day.cse.forEach((_, i) => {
       const key = `${day.w}-${diAll}-cse-${i}`;
       memberTotals.forEach((_, memberIdx) => {
         const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-        if (role === 'all' || role === 'software' || role === 'cse') memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'cse')) memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'cse') && isMemberTaskDone(memberIdx, key)) memberDone[memberIdx]++;
       });
-      if (isTaskDone(key)) {
-        memberDone.forEach((_, memberIdx) => {
-          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-          if (role === 'all' || role === 'software' || role === 'cse') memberDone[memberIdx]++;
-        });
-      }
     });
-    day.cs.forEach((t, i) => {
+    day.cs.forEach((_, i) => {
       const key = `${day.w}-${diAll}-cs-${i}`;
       memberTotals.forEach((_, memberIdx) => {
         const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-        if (role === 'all' || role === 'software' || role === 'cs') memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'cs')) memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'cs') && isMemberTaskDone(memberIdx, key)) memberDone[memberIdx]++;
       });
-      if (isTaskDone(key)) {
-        memberDone.forEach((_, memberIdx) => {
-          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-          if (role === 'all' || role === 'software' || role === 'cs') memberDone[memberIdx]++;
-        });
-      }
     });
-    (day.hw || []).forEach((t, i) => {
+    (day.hw || []).forEach((_, i) => {
       const key = `${day.w}-${diAll}-hw-${i}`;
       memberTotals.forEach((_, memberIdx) => {
         const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-        if (role === 'all' || role === 'hardware') memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'hw')) memberTotals[memberIdx]++;
+        if (roleIncludesTaskType(role, 'hw') && isMemberTaskDone(memberIdx, key)) memberDone[memberIdx]++;
       });
-      if (isTaskDone(key)) {
-        memberDone.forEach((_, memberIdx) => {
-          const role = MEMBER_ROLE_MAP[memberIdx] || 'software';
-          if (role === 'all' || role === 'hardware') memberDone[memberIdx]++;
-        });
-      }
     });
   });
+
   names.forEach((_, idx) => {
     const pct = memberTotals[idx] ? Math.round((memberDone[idx] / memberTotals[idx]) * 100) : 0;
     const progressEl = document.getElementById(`progress-${idx}`);
@@ -2313,7 +2391,7 @@ function focusTeamMember(idx) {
   let totalTasks = 0, doneTasks = 0;
 
   function makeModalItem(text, key, memberIdx) {
-    const status = getTaskStatus(key);
+    const status = getMemberTaskStatus(memberIdx, key);
     const done = status === 'done';
     const pending = status === 'pending';
     totalTasks++;
@@ -2374,8 +2452,9 @@ function tclOverlayClick(e) {
 }
 
 function setModalTaskState(key, memberIdx, state) {
-  const nextState = getTaskStatus(key) === state ? 'todo' : state;
-  setTaskStatus(key, nextState);
+  const nextState = getMemberTaskStatus(memberIdx, key) === state ? 'todo' : state;
+  setMemberTaskStatus(memberIdx, key, nextState);
+  syncSharedTaskStatusFromMembers(key);
   const parts = key.split('-');
   refreshTaskAggregates(parseInt(parts[0]), parseInt(parts[1]));
   renderDay(currentWeek, currentDay);
@@ -2396,21 +2475,21 @@ function getMemberAlertItems(memberIdx) {
     if (role === 'all' || role === 'software' || role === 'cse') {
       d.cse.forEach((t, i) => {
         const key = `${wi}-${di}-cse-${i}`;
-        const status = getTaskStatus(key);
+        const status = getMemberTaskStatus(memberIdx, key);
         if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
       });
     }
     if (role === 'all' || role === 'software' || role === 'cs') {
       d.cs.forEach((t, i) => {
         const key = `${wi}-${di}-cs-${i}`;
-        const status = getTaskStatus(key);
+        const status = getMemberTaskStatus(memberIdx, key);
         if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
       });
     }
     if (role === 'all' || role === 'hardware') {
       (d.hw || []).forEach((t, i) => {
         const key = `${wi}-${di}-hw-${i}`;
-        const status = getTaskStatus(key);
+        const status = getMemberTaskStatus(memberIdx, key);
         if (status !== 'done') items.push({ key, status, text: t, day: d.d, title: d.ti, weekLabel: WEEKS[wi].label });
       });
     }
