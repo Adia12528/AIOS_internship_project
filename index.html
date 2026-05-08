@@ -1845,6 +1845,7 @@ const MEMBER_ROLE_MAP = ['all', 'software', 'software', 'software'];
 const MEMBER_LABELS = DEFAULT_MEMBER_NAMES;
 const WEEK_DAY_GROUPS = WEEKS.map((_, wi) => DAYS.filter((d) => d.w === wi));
 const MEMBER_TASK_KEY_SEPARATOR = '::';
+const MEMBER_TASK_MIGRATION_KEY = 'aios_member_task_migrated_v1';
 let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
 let migratedTaskStatus = false;
 let migratedMemberTaskStatus = false;
@@ -1880,7 +1881,9 @@ function getMemberTaskKey(memberIdx, key) {
   return `${memberIdx}${MEMBER_TASK_KEY_SEPARATOR}${key}`;
 }
 
-if (!Object.keys(memberTaskStatus).length) {
+const memberTaskMigrationDone = localStorage.getItem(MEMBER_TASK_MIGRATION_KEY) === '1';
+
+if (!memberTaskMigrationDone && !Object.keys(memberTaskStatus).length && Object.keys(taskStatus).length) {
   Object.keys(taskStatus).forEach((key) => {
     const taskType = getTaskTypeFromKey(key);
     if (!taskType) return;
@@ -1897,6 +1900,9 @@ if (!Object.keys(memberTaskStatus).length) {
 if (migratedMemberTaskStatus) {
   localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
 }
+if (!memberTaskMigrationDone && (migratedMemberTaskStatus || Object.keys(memberTaskStatus).length)) {
+  localStorage.setItem(MEMBER_TASK_MIGRATION_KEY, '1');
+}
 
 function getTaskStatus(key) {
   return taskStatus[key] || 'todo';
@@ -1909,6 +1915,7 @@ function isTaskDone(key) {
 function setTaskStatus(key, status) {
   if (status === 'todo') delete taskStatus[key];
   else taskStatus[key] = status;
+  // Keep shared task storage for the daily team checklist and overall progress widgets.
   checked[key] = status === 'done';
   localStorage.setItem('aios_task_status', JSON.stringify(taskStatus));
   localStorage.setItem('aios_checked', JSON.stringify(checked));
