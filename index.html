@@ -1983,6 +1983,7 @@ const MEMBER_LABELS = DEFAULT_MEMBER_NAMES;
 const WEEK_DAY_GROUPS = WEEKS.map((_, wi) => DAYS.filter((d) => d.w === wi));
 const MEMBER_TASK_KEY_SEPARATOR = '::';
 const MEMBER_TASK_MIGRATION_KEY = 'aios_member_task_migrated_v1';
+const MEMBER_TASK_MIGRATION_V2_KEY = 'aios_member_task_migrated_v2';
 let progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
 let migratedTaskStatus = false;
 let migratedMemberTaskStatus = false;
@@ -2014,6 +2015,13 @@ function roleIncludesTaskType(role, taskType) {
   return role === taskType;
 }
 
+function getAssignedMembersForTaskType(taskType) {
+  return MEMBER_ROLE_MAP
+    .map((role, idx) => ({ role, idx }))
+    .filter(({ role }) => roleIncludesTaskType(role, taskType))
+    .map(({ idx }) => idx);
+}
+
 function getMemberTaskKey(memberIdx, key) {
   return `${memberIdx}${MEMBER_TASK_KEY_SEPARATOR}${key}`;
 }
@@ -2042,6 +2050,20 @@ if (!memberTaskMigrationDone && (shouldMigrateMemberTasks || Object.keys(memberT
   localStorage.setItem(MEMBER_TASK_MIGRATION_KEY, '1');
 }
 
+const memberTaskMigrationV2Done = localStorage.getItem(MEMBER_TASK_MIGRATION_V2_KEY) === '1';
+if (!memberTaskMigrationV2Done && Object.keys(taskStatus).length) {
+  Object.keys(taskStatus).forEach((key) => {
+    const status = getTaskStatus(key);
+    if (status === 'todo') return;
+    setAssignedMembersTaskStatus(key, status);
+    migratedMemberTaskStatus = true;
+  });
+  if (migratedMemberTaskStatus) {
+    localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
+  }
+  localStorage.setItem(MEMBER_TASK_MIGRATION_V2_KEY, '1');
+}
+
 function getTaskStatus(key) {
   return taskStatus[key] || 'todo';
 }
@@ -2067,20 +2089,28 @@ function isMemberTaskDone(memberIdx, key) {
   return getMemberTaskStatus(memberIdx, key) === 'done';
 }
 
-function setMemberTaskStatus(memberIdx, key, status) {
+function setMemberTaskStatus(memberIdx, key, status, persist = true) {
   const memberKey = getMemberTaskKey(memberIdx, key);
   if (status === 'todo') delete memberTaskStatus[memberKey];
   else memberTaskStatus[memberKey] = status;
+  if (persist) localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
+}
+
+function setAssignedMembersTaskStatus(key, status) {
+  const taskType = getTaskTypeFromKey(key);
+  if (!taskType) return;
+  const assignedMembers = getAssignedMembersForTaskType(taskType);
+  if (!assignedMembers.length) return;
+  assignedMembers.forEach((memberIdx) => {
+    setMemberTaskStatus(memberIdx, key, status, false);
+  });
   localStorage.setItem('aios_member_task_status', JSON.stringify(memberTaskStatus));
 }
 
 function syncSharedTaskStatusFromMembers(key) {
   const taskType = getTaskTypeFromKey(key);
   if (!taskType) return;
-  const assignedMembers = MEMBER_ROLE_MAP
-    .map((role, idx) => ({ role, idx }))
-    .filter(({ role }) => roleIncludesTaskType(role, taskType))
-    .map(({ idx }) => idx);
+  const assignedMembers = getAssignedMembersForTaskType(taskType);
   if (!assignedMembers.length) return;
   const statuses = assignedMembers.map((memberIdx) => getMemberTaskStatus(memberIdx, key));
   const sharedStatus = statuses.every((status) => status === 'done')
@@ -2336,6 +2366,7 @@ function renderDay(wi, globalIdx) {
 function setTaskState(key, state, wi, di) {
   const nextState = getTaskStatus(key) === state ? 'todo' : state;
   setTaskStatus(key, nextState);
+  setAssignedMembersTaskStatus(key, nextState);
   renderDay(parseInt(wi), parseInt(di));
   refreshTaskAggregates(parseInt(wi), parseInt(di));
 }
@@ -2380,9 +2411,32 @@ function toggleTerm(idx, wi, di) {
 // PROGRESS
 // ===========================
 function updateProgress() {
-  const total = DAYS.reduce((sum, d) => sum + d.cse.length + d.cs.length + (d.hw || []).length, 0);
-  const done = Object.keys(taskStatus).filter(k => taskStatus[k] === 'done').length;
-  const pct = Math.round((done / total) * 100);
+  let total = 0;
+  let done = 0;
+  DAYS.forEach((d) => {
+    const wi = d.w;
+    const wdays = WEEK_DAY_GROUPS[wi] || [];
+    const di = wdays.indexOf(d);
+    d.cse.forEach((_, i) => {
+      const key = `${wi}-${di}-cse-${i}`;
+      const members = getAssignedMembersForTaskType('cse');
+      total += members.length;
+      done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+    });
+    d.cs.forEach((_, i) => {
+      const key = `${wi}-${di}-cs-${i}`;
+      const members = getAssignedMembersForTaskType('cs');
+      total += members.length;
+      done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+    });
+    (d.hw || []).forEach((_, i) => {
+      const key = `${wi}-${di}-hw-${i}`;
+      const members = getAssignedMembersForTaskType('hw');
+      total += members.length;
+      done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+    });
+  });
+  const pct = total ? Math.round((done / total) * 100) : 0;
   document.getElementById('prog-pct').textContent = pct + '%';
   document.getElementById('prog-bar').style.width = pct + '%';
   document.getElementById('tasks-done-stat').textContent = done;
@@ -2392,14 +2446,29 @@ function buildWeekProgress() {
   const el = document.getElementById('week-progress-row');
   el.innerHTML = WEEKS.map((w, wi) => {
     const wdays = WEEK_DAY_GROUPS[wi] || [];
-    const total = wdays.reduce((s, d) => s + d.cse.length + d.cs.length + (d.hw || []).length, 0);
+    let total = 0;
     let done = 0;
     wdays.forEach((d, di) => {
-      d.cse.forEach((_, i) => { if (isTaskDone(`${wi}-${di}-cse-${i}`)) done++; });
-      d.cs.forEach((_, i) => { if (isTaskDone(`${wi}-${di}-cs-${i}`)) done++; });
-      (d.hw || []).forEach((_, i) => { if (isTaskDone(`${wi}-${di}-hw-${i}`)) done++; });
+      d.cse.forEach((_, i) => {
+        const key = `${wi}-${di}-cse-${i}`;
+        const members = getAssignedMembersForTaskType('cse');
+        total += members.length;
+        done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+      });
+      d.cs.forEach((_, i) => {
+        const key = `${wi}-${di}-cs-${i}`;
+        const members = getAssignedMembersForTaskType('cs');
+        total += members.length;
+        done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+      });
+      (d.hw || []).forEach((_, i) => {
+        const key = `${wi}-${di}-hw-${i}`;
+        const members = getAssignedMembersForTaskType('hw');
+        total += members.length;
+        done += members.filter((memberIdx) => isMemberTaskDone(memberIdx, key)).length;
+      });
     });
-    const pct = Math.round((done/total)*100);
+    const pct = total ? Math.round((done / total) * 100) : 0;
     const cls = pct === 100 ? 'done' : pct > 0 ? 'current' : '';
     return `<div class="week-pip ${cls}">
       <div class="week-pip-label">${w.label}</div>
@@ -2784,6 +2853,33 @@ function closeMemberAlerts() {
 function alertOverlayClick(e) {
   if (e.target === document.getElementById('alert-overlay')) closeMemberAlerts();
 }
+
+window.addEventListener('storage', (event) => {
+  if (event.storageArea !== localStorage) return;
+  const syncKeys = [
+    'aios_checked',
+    'aios_task_status',
+    'aios_member_task_status',
+    'aios_names',
+    'aios_progress_start_date'
+  ];
+  if (event.key && !syncKeys.includes(event.key)) return;
+
+  checked = readStoredJson('aios_checked', {});
+  taskStatus = readStoredJson('aios_task_status', {});
+  memberTaskStatus = readStoredJson('aios_member_task_status', {});
+  const nextNames = readStoredJson('aios_names', DEFAULT_MEMBER_NAMES.slice());
+  names.splice(0, names.length, ...nextNames);
+  progressStartDate = localStorage.getItem('aios_progress_start_date') || '';
+
+  renderDay(currentWeek, currentDay);
+  buildWeekProgress();
+  updateProgress();
+  updateTeamCounts();
+  updateMemberNotifications();
+  renderMemberChecklists();
+  updateDaysLeftStat();
+});
 
 function getRoadmapWeekIndex(weekValue) {
   if (!LEADER_WEEK_FOCUS.length) return -1;
